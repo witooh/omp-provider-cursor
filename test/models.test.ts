@@ -18,17 +18,26 @@ describe("bootstrap catalog", () => {
     expect(byId("kimi-k3").name).toBe("Kimi K3");
   });
 
-  it("advertises text and image, zero cost, and a conservative window", () => {
+  it("assigns each model's advertised or observed token window", () => {
+    expect(byId("composer-2-5").contextWindow).toBe(200_000);
+    expect(byId("claude-opus-5").contextWindow).toBe(1_000_000);
+    expect(byId("gpt-5-5").contextWindow).toBe(1_000_000);
+    expect(byId("grok-4-5").contextWindow).toBe(256_000);
+    expect(byId("claude-haiku-4-5").contextWindow).toBe(200_000);
+    expect(new Set(bootstrapCursorModels.map((model) => model.contextWindow)).size).toBeGreaterThan(1);
+    expect(byId("composer-2-5").maxTokens).toBe(byId("composer-2-5").contextWindow);
+    expect(byId("claude-opus-5").maxTokens).toBe(1_000_000);
+  });
+
+  it("advertises text and image and zero cost", () => {
     const model = byId("composer-2-5");
     expect(model.input).toEqual(["text", "image"]);
     expect(model.cost).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
-    expect(model.contextWindow).toBe(128_000);
-    expect(model.maxTokens).toBe(16_384);
   });
 });
 
 describe("mapCursorModels", () => {
-  it("maps catalog ids and display names", () => {
+  it("maps catalog ids, display names, and token windows without catalog parameters", () => {
     const items: ModelListItem[] = [{ id: "composer-2.5", displayName: "Composer 2.5" }];
     const mapped = mapCursorModels(items);
     expect(mapped).toEqual([
@@ -37,10 +46,26 @@ describe("mapCursorModels", () => {
         name: "Composer 2.5",
         reasoning: false,
         input: ["text", "image"],
-        contextWindow: 128_000,
-        maxTokens: 16_384,
+        contextWindow: 200_000,
+        maxTokens: 200_000,
       }),
     ]);
+  });
+
+  it("uses the largest catalog context label when the live item has one", () => {
+    const items: ModelListItem[] = [
+      {
+        id: "claude-opus-5",
+        displayName: "Opus 5",
+        parameters: [
+          {
+            id: "context",
+            values: [{ value: "300k" }, { value: "1m" }],
+          },
+        ],
+      },
+    ];
+    expect(mapCursorModels(items)[0]?.contextWindow).toBe(1_000_000);
   });
 
   it("sets effort thinking when the catalog exposes effort values", () => {

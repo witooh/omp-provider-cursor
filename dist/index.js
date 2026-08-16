@@ -14,6 +14,48 @@ function resolveCursorApiKey(apiKey) {
   return trimmed;
 }
 
+// src/context-windows.ts
+var DEFAULT_CONTEXT_WINDOW = 2e5;
+var CURSOR_CONTEXT_WINDOWS = {
+  default: 2e5,
+  "claude-fable-5": 1e6,
+  "claude-haiku-4-5": 2e5,
+  "claude-opus-4-5": 2e5,
+  "claude-opus-4-6": 1e6,
+  "claude-opus-4-7": 1e6,
+  "claude-opus-4-8": 1e6,
+  "claude-opus-5": 1e6,
+  "claude-sonnet-4": 2e5,
+  "claude-sonnet-4-5": 2e5,
+  "claude-sonnet-4-6": 1e6,
+  "claude-sonnet-5": 1e6,
+  "composer-2": 2e5,
+  "composer-2.5": 2e5,
+  "gemini-2.5-flash": 2e5,
+  "gemini-3-flash": 2e5,
+  "gemini-3.1-pro": 2e5,
+  "gemini-3.5-flash": 2e5,
+  "gemini-3.6-flash": 2e5,
+  "glm-5.2": 2e5,
+  "gpt-5-mini": 272e3,
+  "gpt-5.1": 272e3,
+  "gpt-5.2": 272e3,
+  "gpt-5.3-codex": 272e3,
+  "gpt-5.4": 1e6,
+  "gpt-5.4-mini": 272e3,
+  "gpt-5.4-nano": 272e3,
+  "gpt-5.5": 1e6,
+  "gpt-5.6-luna": 1e6,
+  "gpt-5.6-sol": 1e6,
+  "gpt-5.6-terra": 1e6,
+  "grok-4.5": 256e3,
+  "kimi-k2.7-code": 2e5,
+  "kimi-k3": 2e5
+};
+function lookupCursorContextWindow(catalogId) {
+  return CURSOR_CONTEXT_WINDOWS[catalogId] ?? DEFAULT_CONTEXT_WINDOW;
+}
+
 // src/sdk.ts
 async function loadCursorSdk() {
   return import("@cursor/sdk");
@@ -21,8 +63,6 @@ async function loadCursorSdk() {
 
 // src/models.ts
 var CURSOR_SDK_BASE_URL = "https://cursor.com";
-var FALLBACK_CONTEXT_WINDOW = 128e3;
-var FALLBACK_MAX_TOKENS = 16384;
 var ZERO_COST = Object.freeze({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
 var TEXT_AND_IMAGE = ["text", "image"];
 var EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
@@ -75,6 +115,7 @@ function toProviderModels(items) {
   return items.map((item) => {
     const thinking = thinkingFromItem(item);
     const ompId = item.id.replace(/(\d)\.(\d)/g, "$1-$2");
+    const contextWindow = contextWindowFromItem(item);
     selectionIdByOmpId[ompId] = item.id;
     return {
       id: ompId,
@@ -83,8 +124,8 @@ function toProviderModels(items) {
       ...thinking ? { thinking } : {},
       input: [...TEXT_AND_IMAGE],
       cost: { ...ZERO_COST },
-      contextWindow: contextWindowFromItem(item),
-      maxTokens: FALLBACK_MAX_TOKENS
+      contextWindow,
+      maxTokens: contextWindow
     };
   });
 }
@@ -110,7 +151,7 @@ function contextWindowFromItem(item) {
     const parsed = parseContextWindow(entry.value);
     if (parsed !== void 0 && parsed > largest) largest = parsed;
   }
-  return largest > 0 ? largest : FALLBACK_CONTEXT_WINDOW;
+  return largest > 0 ? largest : lookupCursorContextWindow(item.id);
 }
 function thinkingFromItem(item) {
   const effort = getParameter(item, "effort") ?? getParameter(item, "reasoning");
@@ -475,12 +516,12 @@ function cursorSdkProvider(models) {
     baseUrl: CURSOR_SDK_BASE_URL,
     api: "cursor-sdk",
     apiKey: CURSOR_API_KEY_CONFIG_VALUE,
-    streamSimple: streamCursor,
-    ...models && models.length > 0 ? { models } : { fetchDynamicModels: fetchCursorModels }
+    models,
+    streamSimple: streamCursor
   };
 }
 function index_default(pi) {
-  pi.registerProvider("cursor-sdk", cursorSdkProvider());
+  pi.registerProvider("cursor-sdk", cursorSdkProvider(bootstrapCursorModels));
   pi.registerCommand("cursor-sdk-refresh-models", {
     description: "Refresh the live Cursor model catalog",
     handler: async (_args, ctx) => {

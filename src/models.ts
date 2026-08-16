@@ -1,11 +1,11 @@
 import type { ModelListItem } from "@cursor/sdk";
 import type { ProviderModelConfig } from "@oh-my-pi/pi-coding-agent";
 import { resolveCursorApiKey } from "./api-key.js";
+import { lookupCursorContextWindow } from "./context-windows.js";
 import { loadCursorSdk } from "./sdk.js";
 
 export const CURSOR_SDK_BASE_URL = "https://cursor.com";
-export const FALLBACK_CONTEXT_WINDOW = 128_000;
-export const FALLBACK_MAX_TOKENS = 16_384;
+export { DEFAULT_CONTEXT_WINDOW as FALLBACK_CONTEXT_WINDOW } from "./context-windows.js";
 
 const ZERO_COST = Object.freeze({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
 const TEXT_AND_IMAGE = ["text", "image"] as const;
@@ -67,6 +67,7 @@ function toProviderModels(items: readonly ModelListItem[]): ProviderModelConfig[
   return items.map((item) => {
     const thinking = thinkingFromItem(item);
     const ompId = item.id.replace(/(\d)\.(\d)/g, "$1-$2");
+    const contextWindow = contextWindowFromItem(item);
     selectionIdByOmpId[ompId] = item.id;
     return {
       id: ompId,
@@ -75,8 +76,8 @@ function toProviderModels(items: readonly ModelListItem[]): ProviderModelConfig[
       ...(thinking ? { thinking } : {}),
       input: [...TEXT_AND_IMAGE],
       cost: { ...ZERO_COST },
-      contextWindow: contextWindowFromItem(item),
-      maxTokens: FALLBACK_MAX_TOKENS,
+      contextWindow,
+      maxTokens: contextWindow,
     };
   });
 }
@@ -107,7 +108,7 @@ function contextWindowFromItem(item: ModelListItem): number {
     const parsed = parseContextWindow(entry.value);
     if (parsed !== undefined && parsed > largest) largest = parsed;
   }
-  return largest > 0 ? largest : FALLBACK_CONTEXT_WINDOW;
+  return largest > 0 ? largest : lookupCursorContextWindow(item.id);
 }
 
 function thinkingFromItem(item: ModelListItem): Thinking | undefined {

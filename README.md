@@ -40,7 +40,7 @@ If the key lives in a personal env file, `source` that file in the shell before 
 /cursor-sdk-refresh-models
 ```
 
-Without a key, a bootstrap catalog lists the last known Cursor model set (34 ids). With a key, omp loads the live catalog from `Cursor.models.list` at startup. `/cursor-sdk-refresh-models` replaces it again from Cursor.
+The model list is baked into the plugin (34 ids, each with its own context window). Startup does not call `Cursor.models.list`. `/cursor-sdk-refresh-models` is optional and replaces the catalog from Cursor when a key is set. `maxTokens` mirrors each model's context window — Cursor does not publish a separate output cap.
 
 ## v1 scope
 

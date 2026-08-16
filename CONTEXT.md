@@ -13,12 +13,16 @@ Cursor's local agent runtime (`@cursor/sdk`) used for inference. Not the built-i
 _Avoid_: cursor-agent, api2.cursor.sh
 
 **bootstrap catalog**:
-The static model list shown before a Cursor API key is available.
+The baked-in model list registered at startup. Not fetched from Cursor unless the user runs `/cursor-sdk-refresh-models`.
 _Avoid_: fallback models, dummy catalog
 
 **live catalog**:
-The model list returned by Cursor for the current API key. Loaded at startup when a key is available, or replaced by `/cursor-sdk-refresh-models`.
+The model list returned by Cursor for the current API key. Loaded only by `/cursor-sdk-refresh-models`.
 _Avoid_: dynamic models (omp hook name)
+
+**context window**:
+The per-model token limit shown on `/model`. Taken from the catalog `context` parameter when present, otherwise from the observed SDK checkpoint table. `maxTokens` mirrors it.
+_Avoid_: a single 128k/16k fallback for every model
 
 **omp tool loop**:
 The shared omp contract: the provider emits tool calls, omp executes them, the next turn carries tool results. Same loop as other omp providers.
