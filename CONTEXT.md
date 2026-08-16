@@ -17,7 +17,7 @@ The static model list shown before a Cursor API key is available.
 _Avoid_: fallback models, dummy catalog
 
 **live catalog**:
-The model list returned by Cursor for the current API key after refresh.
+The model list returned by Cursor for the current API key. Loaded at startup when a key is available, or replaced by `/cursor-sdk-refresh-models`.
 _Avoid_: dynamic models (omp hook name)
 
 **omp tool loop**:

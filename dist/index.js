@@ -14,6 +14,11 @@ function resolveCursorApiKey(apiKey) {
   return trimmed;
 }
 
+// src/sdk.ts
+async function loadCursorSdk() {
+  return import("@cursor/sdk");
+}
+
 // src/models.ts
 var CURSOR_SDK_BASE_URL = "https://cursor.com";
 var FALLBACK_CONTEXT_WINDOW = 128e3;
@@ -29,20 +34,61 @@ var KNOWN_EFFORT = {
   xhigh: true,
   max: true
 };
-var selectionIdByOmpId = {
-  "composer-2-5": "composer-2.5"
-};
-var bootstrapCursorModels = [
-  {
-    id: "composer-2-5",
-    name: "Composer 2.5",
-    reasoning: false,
-    input: [...TEXT_AND_IMAGE],
-    cost: ZERO_COST,
-    contextWindow: FALLBACK_CONTEXT_WINDOW,
-    maxTokens: FALLBACK_MAX_TOKENS
-  }
+var selectionIdByOmpId = {};
+var FALLBACK_CATALOG_ITEMS = [
+  { id: "claude-fable-5", displayName: "Fable 5" },
+  { id: "claude-haiku-4-5", displayName: "Haiku 4.5" },
+  { id: "claude-opus-4-5", displayName: "Opus 4.5" },
+  { id: "claude-opus-4-6", displayName: "Opus 4.6" },
+  { id: "claude-opus-4-7", displayName: "Opus 4.7" },
+  { id: "claude-opus-4-8", displayName: "Opus 4.8" },
+  { id: "claude-opus-5", displayName: "Opus 5" },
+  { id: "claude-sonnet-4", displayName: "Sonnet 4" },
+  { id: "claude-sonnet-4-5", displayName: "Sonnet 4.5" },
+  { id: "claude-sonnet-4-6", displayName: "Sonnet 4.6" },
+  { id: "claude-sonnet-5", displayName: "Sonnet 5" },
+  { id: "composer-2", displayName: "Composer 2" },
+  { id: "composer-2.5", displayName: "Composer 2.5" },
+  { id: "default", displayName: "Auto" },
+  { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash" },
+  { id: "gemini-3-flash", displayName: "Gemini 3 Flash" },
+  { id: "gemini-3.1-pro", displayName: "Gemini 3.1 Pro" },
+  { id: "gemini-3.5-flash", displayName: "Gemini 3.5 Flash" },
+  { id: "gemini-3.6-flash", displayName: "Gemini 3.6 Flash" },
+  { id: "glm-5.2", displayName: "GLM 5.2" },
+  { id: "gpt-5-mini", displayName: "GPT-5 Mini" },
+  { id: "gpt-5.1", displayName: "GPT-5.1" },
+  { id: "gpt-5.2", displayName: "GPT-5.2" },
+  { id: "gpt-5.3-codex", displayName: "Codex 5.3" },
+  { id: "gpt-5.4", displayName: "GPT-5.4" },
+  { id: "gpt-5.4-mini", displayName: "GPT-5.4 Mini" },
+  { id: "gpt-5.4-nano", displayName: "GPT-5.4 Nano" },
+  { id: "gpt-5.5", displayName: "GPT-5.5" },
+  { id: "gpt-5.6-luna", displayName: "GPT-5.6 Luna" },
+  { id: "gpt-5.6-sol", displayName: "GPT-5.6 Sol" },
+  { id: "gpt-5.6-terra", displayName: "GPT-5.6 Terra" },
+  { id: "grok-4.5", displayName: "Cursor Grok 4.5" },
+  { id: "kimi-k2.7-code", displayName: "Kimi K2.7 Code" },
+  { id: "kimi-k3", displayName: "Kimi K3" }
 ];
+function toProviderModels(items) {
+  return items.map((item) => {
+    const thinking = thinkingFromItem(item);
+    const ompId = item.id.replace(/(\d)\.(\d)/g, "$1-$2");
+    selectionIdByOmpId[ompId] = item.id;
+    return {
+      id: ompId,
+      name: item.displayName || item.id,
+      reasoning: thinking !== void 0,
+      ...thinking ? { thinking } : {},
+      input: [...TEXT_AND_IMAGE],
+      cost: { ...ZERO_COST },
+      contextWindow: contextWindowFromItem(item),
+      maxTokens: FALLBACK_MAX_TOKENS
+    };
+  });
+}
+var bootstrapCursorModels = toProviderModels(FALLBACK_CATALOG_ITEMS);
 function cursorSelectionId(ompId) {
   return selectionIdByOmpId[ompId] ?? ompId;
 }
@@ -79,26 +125,17 @@ function thinkingFromItem(item) {
 }
 function mapCursorModels(items) {
   if (items.length === 0) return bootstrapCursorModels;
-  return items.map((item) => {
-    const thinking = thinkingFromItem(item);
-    const ompId = item.id.replace(/(\d)\.(\d)/g, "$1-$2");
-    selectionIdByOmpId[ompId] = item.id;
-    return {
-      id: ompId,
-      name: item.displayName || item.id,
-      reasoning: thinking !== void 0,
-      ...thinking ? { thinking } : {},
-      input: [...TEXT_AND_IMAGE],
-      cost: { ...ZERO_COST },
-      contextWindow: contextWindowFromItem(item),
-      maxTokens: FALLBACK_MAX_TOKENS
-    };
-  });
+  return toProviderModels(items);
 }
-
-// src/sdk.ts
-async function loadCursorSdk() {
-  return import("@cursor/sdk");
+async function fetchCursorModels(apiKey) {
+  const key = resolveCursorApiKey(apiKey);
+  if (!key) return bootstrapCursorModels;
+  try {
+    const sdk = await loadCursorSdk();
+    return mapCursorModels(await sdk.Cursor.models.list({ apiKey: key }));
+  } catch {
+    return bootstrapCursorModels;
+  }
 }
 
 // src/stream.ts
@@ -438,12 +475,12 @@ function cursorSdkProvider(models) {
     baseUrl: CURSOR_SDK_BASE_URL,
     api: "cursor-sdk",
     apiKey: CURSOR_API_KEY_CONFIG_VALUE,
-    models,
-    streamSimple: streamCursor
+    streamSimple: streamCursor,
+    ...models && models.length > 0 ? { models } : { fetchDynamicModels: fetchCursorModels }
   };
 }
 function index_default(pi) {
-  pi.registerProvider("cursor-sdk", cursorSdkProvider(bootstrapCursorModels));
+  pi.registerProvider("cursor-sdk", cursorSdkProvider());
   pi.registerCommand("cursor-sdk-refresh-models", {
     description: "Refresh the live Cursor model catalog",
     handler: async (_args, ctx) => {
@@ -470,6 +507,7 @@ function index_default(pi) {
 export {
   bootstrapCursorModels,
   index_default as default,
+  fetchCursorModels,
   mapCursorModels,
   resolveCursorApiKey,
   streamCursor

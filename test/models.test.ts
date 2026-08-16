@@ -9,8 +9,13 @@ const byId = (id: string) => {
 };
 
 describe("bootstrap catalog", () => {
-  it("includes composer-2-5 so /login can see the provider", () => {
+  it("includes the current Cursor fallback set so /model is not a single entry", () => {
+    expect(bootstrapCursorModels.length).toBe(34);
     expect(byId("composer-2-5").name).toBe("Composer 2.5");
+    expect(byId("claude-opus-5").name).toBe("Opus 5");
+    expect(byId("gpt-5-5").name).toBe("GPT-5.5");
+    expect(byId("grok-4-5").name).toBe("Cursor Grok 4.5");
+    expect(byId("kimi-k3").name).toBe("Kimi K3");
   });
 
   it("advertises text and image, zero cost, and a conservative window", () => {

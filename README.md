@@ -40,7 +40,7 @@ If the key lives in a personal env file, `source` that file in the shell before 
 /cursor-sdk-refresh-models
 ```
 
-Without a key, a bootstrap catalog still lists `composer-2-5`. After a key is available, `/cursor-sdk-refresh-models` replaces the catalog from `Cursor.models.list`.
+Without a key, a bootstrap catalog lists the last known Cursor model set (34 ids). With a key, omp loads the live catalog from `Cursor.models.list` at startup. `/cursor-sdk-refresh-models` replaces it again from Cursor.
 
 ## v1 scope
 

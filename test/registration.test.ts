@@ -2,7 +2,6 @@ import { describe, expect, it, mock } from "bun:test";
 import type { ExtensionAPI, ProviderConfig } from "@oh-my-pi/pi-coding-agent";
 import { CURSOR_API_KEY_CONFIG_VALUE } from "../src/api-key.js";
 import registerExtension from "../src/index.js";
-import { bootstrapCursorModels } from "../src/models.js";
 
 const register = () => {
   const registerProvider = mock((_name: string, _config: ProviderConfig) => {});
@@ -20,14 +19,15 @@ const register = () => {
 };
 
 describe("extension registration", () => {
-  it("registers cursor-sdk once with a custom stream and bootstrap catalog", () => {
+  it("registers cursor-sdk with a live catalog hook and no static models", () => {
     const { registerProvider, name, config } = register();
     expect(registerProvider).toHaveBeenCalledTimes(1);
     expect(name).toBe("cursor-sdk");
     expect(config.api).toBe("cursor-sdk");
     expect(config.baseUrl).toBe("https://cursor.com");
     expect(config.apiKey).toBe(CURSOR_API_KEY_CONFIG_VALUE);
-    expect(config.models).toBe(bootstrapCursorModels);
+    expect(config.models ?? []).toEqual([]);
+    expect(typeof config.fetchDynamicModels).toBe("function");
     expect(typeof config.streamSimple).toBe("function");
     expect(config.oauth).toBeUndefined();
   });
