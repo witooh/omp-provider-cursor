@@ -1,0 +1,13 @@
+node_modules/
+# The bundle IS committed: `omp plugin install github:...` runs `bun install`,
+# which blocks the `prepare` lifecycle script, so nothing builds dist/ on the
+# consumer side and omp's extension-entry validation fails.
+dist/*
+!dist/index.js
+*.tsbuildinfo
+
+# Agent/tool state
+.agent/
+.agents/
+.ralph/
+*.tgz
