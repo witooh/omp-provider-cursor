@@ -15,7 +15,7 @@ mock.module("../src/sdk.js", () => ({
 const registerExtension = (await import("../src/index.js")).default;
 
 describe("hunt: refresh command", () => {
-  it("re-registers cursor-sdk with the live list", async () => {
+  it("registers the live list on the session model registry", async () => {
     const registerProvider = mock((_name: string, _config: ProviderConfig) => {});
     const registerCommand = mock((_name: string, spec: { handler: (args: string, ctx: unknown) => Promise<void> }) => {
       void spec;
@@ -26,14 +26,17 @@ describe("hunt: refresh command", () => {
     const command = registerCommand.mock.calls[0]?.[1] as
       | { handler: (args: string, ctx: unknown) => Promise<void> }
       | undefined;
+    expect(registerCommand.mock.calls[0]?.[0]).toBe("update-catalog");
     expect(command).toBeDefined();
+    const registerLive = mock((_name: string, _config: ProviderConfig) => {});
     await command?.handler("", {
-      modelRegistry: { getApiKeyForProvider: async () => "key-live" },
+      modelRegistry: { getApiKeyForProvider: async () => "key-live", registerProvider: registerLive },
       hasUI: true,
       ui: { notify: mock(() => {}) },
     });
-    expect(registerProvider.mock.calls.length).toBe(2);
-    const second = registerProvider.mock.calls[1]?.[1] as ProviderConfig | undefined;
-    expect(second?.models?.map((model) => model.id)).toEqual(["composer-2-5"]);
+    expect(registerProvider.mock.calls.length).toBe(1);
+    expect(registerLive).toHaveBeenCalledTimes(1);
+    const live = registerLive.mock.calls[0]?.[1] as ProviderConfig | undefined;
+    expect(live?.models?.map((model) => model.id)).toEqual(["composer-2-5"]);
   });
 });

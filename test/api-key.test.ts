@@ -19,6 +19,7 @@ describe("resolveCursorApiKey", () => {
     expect(resolveCursorApiKey("$CURSOR_API_KEY")).toBe("from-env");
     expect(resolveCursorApiKey(`$\{CURSOR_API_KEY}`)).toBe("from-env");
     expect(resolveCursorApiKey("CURSOR_API_KEY")).toBe("from-env");
+    expect(resolveCursorApiKey(undefined)).toBe("from-env");
   });
 
   it("returns undefined when the placeholder has no env value", () => {

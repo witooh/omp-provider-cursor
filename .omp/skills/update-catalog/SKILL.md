@@ -35,10 +35,8 @@ From the repo root:
 bun .omp/skills/update-catalog/scripts/refresh-catalog.ts
 ```
 
-The script writes only `src/catalog.generated.ts`. It:
-
 - lists models from `Cursor.models.list`
-- keeps `{ id, displayName }` only
+- keeps `id`, `displayName`, and catalog parameters `effort`, `reasoning`, `thinking`, and `context`
 - sets each context window from the catalog `context` label when present,
   otherwise the previous generated window, otherwise `200_000`
 - aborts on an empty list
@@ -53,6 +51,8 @@ Open `test/models.test.ts`.
 - Keep assertions only for ids that still exist. Drop ids in `removed`.
 - Add a name assertion for each id in `added` using the live `displayName`.
 - Do not invent token windows. Read the new `CURSOR_CONTEXT_WINDOWS` entry.
+
+- Confirm models that advertise `effort` or `reasoning` still expose `thinking.mode === "effort"` after the rewrite.
 
 ## 4. Gates
 
@@ -77,6 +77,5 @@ is required to see the baked list. Ship only if the user asks.
 - Do not add a model that `Cursor.models.list` did not return.
 - Do not replace a Cursor-side window with an API-advertised number from
   another vendor unless the live catalog item itself has that `context` label.
-- `maxTokens` stays mirrored to `contextWindow` in `src/models.ts`.
-- `/cursor-sdk-refresh-models` stays optional and is not a substitute for
-  this skill.
+- `/update-catalog` updates the in-session catalog only. This skill rewrites the baked snapshot.
+- `/cursor-sdk-refresh-models` is the old name and must not be registered.

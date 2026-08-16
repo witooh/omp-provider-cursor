@@ -13,11 +13,11 @@ Cursor's local agent runtime (`@cursor/sdk`) used for inference. Not the built-i
 _Avoid_: cursor-agent, api2.cursor.sh
 
 **bootstrap catalog**:
-The baked-in model list registered at startup. Not fetched from Cursor unless the user runs `/cursor-sdk-refresh-models`.
+The baked-in model list registered at startup. Not fetched from Cursor unless the user runs `/update-catalog`.
 _Avoid_: fallback models, dummy catalog
 
 **live catalog**:
-The model list returned by Cursor for the current API key. Loaded only by `/cursor-sdk-refresh-models`.
+The model list returned by Cursor for the current API key. Loaded only by `/update-catalog`.
 _Avoid_: dynamic models (omp hook name)
 
 **context window**:

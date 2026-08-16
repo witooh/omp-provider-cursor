@@ -10,12 +10,13 @@ const byId = (id: string) => {
 
 describe("bootstrap catalog", () => {
   it("includes the current Cursor fallback set so /model is not a single entry", () => {
-    expect(bootstrapCursorModels.length).toBe(34);
+    expect(bootstrapCursorModels.length).toBe(36);
     expect(byId("composer-2-5").name).toBe("Composer 2.5");
     expect(byId("claude-opus-5").name).toBe("Opus 5");
     expect(byId("gpt-5-5").name).toBe("GPT-5.5");
     expect(byId("grok-4-6").name).toBe("Cursor Grok 4.6");
-    expect(bootstrapCursorModels.some((model) => model.id === "grok-4-5")).toBe(false);
+    expect(byId("grok-4-5").name).toBe("Cursor Grok 4.5");
+    expect(byId("gemini-3-7-flash").name).toBe("Gemini 3.7 Flash");
     expect(byId("kimi-k3").name).toBe("Kimi K3");
   });
 
@@ -28,6 +29,20 @@ describe("bootstrap catalog", () => {
     expect(new Set(bootstrapCursorModels.map((model) => model.contextWindow)).size).toBeGreaterThan(1);
     expect(byId("composer-2-5").maxTokens).toBe(byId("composer-2-5").contextWindow);
     expect(byId("claude-opus-5").maxTokens).toBe(1_000_000);
+  });
+
+  it("exposes catalog effort on models that advertise it", () => {
+    const opus = byId("claude-opus-5");
+    expect(opus.reasoning).toBe(true);
+    expect(opus.thinking && "mode" in opus.thinking ? opus.thinking.mode : undefined).toBe("effort");
+    const opusEfforts = opus.thinking && "efforts" in opus.thinking ? opus.thinking.efforts : [];
+    expect(JSON.stringify(opusEfforts)).toBe(JSON.stringify(["low", "medium", "high", "xhigh", "max"]));
+    const grok = byId("grok-4-6");
+    const grokEfforts = grok.thinking && "efforts" in grok.thinking ? grok.thinking.efforts : [];
+    expect(JSON.stringify(grokEfforts)).toBe(JSON.stringify(["low", "medium", "high", "xhigh"]));
+    const gpt = byId("gpt-5-5");
+    const gptEfforts = gpt.thinking && "efforts" in gpt.thinking ? gpt.thinking.efforts : [];
+    expect(JSON.stringify(gptEfforts)).toBe(JSON.stringify(["low", "medium", "high", "xhigh"]));
   });
 
   it("advertises text and image and zero cost", () => {

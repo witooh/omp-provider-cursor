@@ -20,8 +20,8 @@ function cursorSdkProvider(models: ProviderModelConfig[]): ProviderConfig {
 
 export default function (pi: ExtensionAPI) {
   pi.registerProvider("cursor-sdk", cursorSdkProvider(bootstrapCursorModels));
-  pi.registerCommand("cursor-sdk-refresh-models", {
-    description: "Refresh the live Cursor model catalog",
+  pi.registerCommand("update-catalog", {
+    description: "Update the Cursor model catalog from Cursor.models.list",
     handler: async (_args, ctx) => {
       const raw = await ctx.modelRegistry.getApiKeyForProvider("cursor-sdk");
       const apiKey = resolveCursorApiKey(raw);
@@ -33,12 +33,12 @@ export default function (pi: ExtensionAPI) {
         const sdk = await loadCursorSdk();
         const listed = await sdk.Cursor.models.list({ apiKey });
         const models = mapCursorModels(listed);
-        pi.registerProvider("cursor-sdk", cursorSdkProvider(models));
+        ctx.modelRegistry.registerProvider("cursor-sdk", cursorSdkProvider(models));
         if (!ctx.hasUI) return;
-        ctx.ui.notify(`Cursor SDK catalog refreshed with ${models.length} models.`, "info");
+        ctx.ui.notify(`Cursor SDK catalog updated with ${models.length} models.`, "info");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        ctx.ui.notify(`Cursor SDK catalog refresh failed: ${message}`, "error");
+        ctx.ui.notify(`Cursor SDK catalog update failed: ${message}`, "error");
       }
     },
   });

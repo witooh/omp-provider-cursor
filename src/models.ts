@@ -77,7 +77,9 @@ function contextWindowFromItem(item: ModelListItem): number {
 function thinkingFromItem(item: ModelListItem): Thinking | undefined {
   const effort = getParameter(item, "effort") ?? getParameter(item, "reasoning");
   if (!effort) return undefined;
-  const values = effort.values.map((entry) => entry.value.toLowerCase()).filter((value) => KNOWN_EFFORT[value]);
+  const values = effort.values
+    .map((entry) => (entry.value.toLowerCase() === "extra-high" ? "xhigh" : entry.value.toLowerCase()))
+    .filter((value) => KNOWN_EFFORT[value]);
   const ordered = EFFORT_ORDER.filter((level) => values.includes(level));
   if (ordered.length === 0) return undefined;
   return {

@@ -12,7 +12,6 @@ const PLACEHOLDERS: Record<string, true> = {
 
 export function resolveCursorApiKey(apiKey?: string): string | undefined {
   const trimmed = apiKey?.trim();
-  if (!trimmed) return undefined;
-  if (PLACEHOLDERS[trimmed]) return process.env.CURSOR_API_KEY?.trim() || undefined;
+  if (!trimmed || PLACEHOLDERS[trimmed]) return process.env.CURSOR_API_KEY?.trim() || undefined;
   return trimmed;
 }

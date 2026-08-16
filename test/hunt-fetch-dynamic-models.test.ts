@@ -1,4 +1,11 @@
-import { describe, expect, it, mock } from "bun:test";
+import { afterEach, describe, expect, it, mock } from "bun:test";
+
+const originalKey = process.env.CURSOR_API_KEY;
+
+afterEach(() => {
+  if (originalKey === undefined) delete process.env.CURSOR_API_KEY;
+  else process.env.CURSOR_API_KEY = originalKey;
+});
 
 mock.module("../src/sdk.js", () => ({
   loadCursorSdk: async () => ({
@@ -18,6 +25,7 @@ const { bootstrapCursorModels, fetchCursorModels } = await import("../src/models
 
 describe("hunt: fetch live catalog", () => {
   it("returns the bootstrap catalog when no API key is resolved", async () => {
+    delete process.env.CURSOR_API_KEY;
     expect(await fetchCursorModels(undefined)).toBe(bootstrapCursorModels);
   });
 

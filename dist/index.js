@@ -9,24 +9,98 @@ var PLACEHOLDERS = {
 };
 function resolveCursorApiKey(apiKey) {
   const trimmed = apiKey?.trim();
-  if (!trimmed) return void 0;
-  if (PLACEHOLDERS[trimmed]) return process.env.CURSOR_API_KEY?.trim() || void 0;
+  if (!trimmed || PLACEHOLDERS[trimmed]) return process.env.CURSOR_API_KEY?.trim() || void 0;
   return trimmed;
 }
 
 // src/catalog.generated.ts
+function catalogParam(id, values) {
+  return { id, values: values.map((value) => ({ value })) };
+}
 var FALLBACK_CATALOG_ITEMS = [
-  { id: "claude-fable-5", displayName: "Fable 5" },
-  { id: "claude-haiku-4-5", displayName: "Haiku 4.5" },
-  { id: "claude-opus-4-5", displayName: "Opus 4.5" },
-  { id: "claude-opus-4-6", displayName: "Opus 4.6" },
-  { id: "claude-opus-4-7", displayName: "Opus 4.7" },
-  { id: "claude-opus-4-8", displayName: "Opus 4.8" },
-  { id: "claude-opus-5", displayName: "Opus 5" },
-  { id: "claude-sonnet-4", displayName: "Sonnet 4" },
-  { id: "claude-sonnet-4-5", displayName: "Sonnet 4.5" },
-  { id: "claude-sonnet-4-6", displayName: "Sonnet 4.6" },
-  { id: "claude-sonnet-5", displayName: "Sonnet 5" },
+  {
+    id: "claude-fable-5",
+    displayName: "Fable 5",
+    parameters: [
+      catalogParam("thinking", ["false", "true"]),
+      catalogParam("context", ["300k", "1m"]),
+      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
+    ]
+  },
+  {
+    id: "claude-haiku-4-5",
+    displayName: "Haiku 4.5",
+    parameters: [catalogParam("thinking", ["false", "true"])]
+  },
+  {
+    id: "claude-opus-4-5",
+    displayName: "Opus 4.5",
+    parameters: [catalogParam("thinking", ["false", "true"])]
+  },
+  {
+    id: "claude-opus-4-6",
+    displayName: "Opus 4.6",
+    parameters: [
+      catalogParam("thinking", ["false", "true"]),
+      catalogParam("context", ["200k", "1m"]),
+      catalogParam("effort", ["low", "medium", "high", "max"])
+    ]
+  },
+  {
+    id: "claude-opus-4-7",
+    displayName: "Opus 4.7",
+    parameters: [
+      catalogParam("thinking", ["false", "true"]),
+      catalogParam("context", ["300k", "1m"]),
+      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
+    ]
+  },
+  {
+    id: "claude-opus-4-8",
+    displayName: "Opus 4.8",
+    parameters: [
+      catalogParam("thinking", ["false", "true"]),
+      catalogParam("context", ["300k", "1m"]),
+      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
+    ]
+  },
+  {
+    id: "claude-opus-5",
+    displayName: "Opus 5",
+    parameters: [
+      catalogParam("thinking", ["false", "true"]),
+      catalogParam("context", ["300k", "1m"]),
+      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
+    ]
+  },
+  {
+    id: "claude-sonnet-4",
+    displayName: "Sonnet 4",
+    parameters: [catalogParam("thinking", ["false", "true"]), catalogParam("context", ["200k"])]
+  },
+  {
+    id: "claude-sonnet-4-5",
+    displayName: "Sonnet 4.5",
+    parameters: [catalogParam("thinking", ["false", "true"]), catalogParam("context", ["200k"])]
+  },
+  {
+    id: "claude-sonnet-4-6",
+    displayName: "Sonnet 4.6",
+    parameters: [
+      catalogParam("thinking", ["false", "true"]),
+      catalogParam("context", ["200k", "1m"]),
+      catalogParam("effort", ["low", "medium", "high", "max"])
+    ]
+  },
+  {
+    id: "claude-sonnet-5",
+    displayName: "Sonnet 5",
+    parameters: [
+      catalogParam("thinking", ["false", "true"]),
+      catalogParam("context", ["300k", "1m"]),
+      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
+    ]
+  },
   { id: "composer-2", displayName: "Composer 2" },
   { id: "composer-2.5", displayName: "Composer 2.5" },
   { id: "default", displayName: "Auto" },
@@ -34,25 +108,105 @@ var FALLBACK_CATALOG_ITEMS = [
   { id: "gemini-3-flash", displayName: "Gemini 3 Flash" },
   { id: "gemini-3.1-pro", displayName: "Gemini 3.1 Pro" },
   { id: "gemini-3.5-flash", displayName: "Gemini 3.5 Flash" },
-  { id: "gemini-3.6-flash", displayName: "Gemini 3.6 Flash" },
-  { id: "glm-5.2", displayName: "GLM 5.2" },
+  {
+    id: "gemini-3.6-flash",
+    displayName: "Gemini 3.6 Flash",
+    parameters: [catalogParam("effort", ["minimal", "low", "medium", "high"])]
+  },
+  {
+    id: "gemini-3.7-flash",
+    displayName: "Gemini 3.7 Flash",
+    parameters: [catalogParam("effort", ["low", "medium", "high"])]
+  },
+  {
+    id: "glm-5.2",
+    displayName: "GLM 5.2",
+    parameters: [catalogParam("reasoning", ["high", "max"])]
+  },
   { id: "gpt-5-mini", displayName: "GPT-5 Mini" },
-  { id: "gpt-5.1", displayName: "GPT-5.1" },
-  { id: "gpt-5.2", displayName: "GPT-5.2" },
-  { id: "gpt-5.3-codex", displayName: "Codex 5.3" },
-  { id: "gpt-5.4", displayName: "GPT-5.4" },
-  { id: "gpt-5.4-mini", displayName: "GPT-5.4 Mini" },
-  { id: "gpt-5.4-nano", displayName: "GPT-5.4 Nano" },
-  { id: "gpt-5.5", displayName: "GPT-5.5" },
-  { id: "gpt-5.6-luna", displayName: "GPT-5.6 Luna" },
-  { id: "gpt-5.6-sol", displayName: "GPT-5.6 Sol" },
-  { id: "gpt-5.6-terra", displayName: "GPT-5.6 Terra" },
-  { id: "grok-4.6", displayName: "Cursor Grok 4.6" },
+  {
+    id: "gpt-5.1",
+    displayName: "GPT-5.1",
+    parameters: [catalogParam("reasoning", ["low", "medium", "high"])]
+  },
+  {
+    id: "gpt-5.2",
+    displayName: "GPT-5.2",
+    parameters: [catalogParam("reasoning", ["low", "medium", "high", "extra-high"])]
+  },
+  {
+    id: "gpt-5.3-codex",
+    displayName: "Codex 5.3",
+    parameters: [catalogParam("reasoning", ["low", "medium", "high", "extra-high"])]
+  },
+  {
+    id: "gpt-5.4",
+    displayName: "GPT-5.4",
+    parameters: [
+      catalogParam("context", ["272k", "1m"]),
+      catalogParam("reasoning", ["none", "low", "medium", "high", "extra-high"])
+    ]
+  },
+  {
+    id: "gpt-5.4-mini",
+    displayName: "GPT-5.4 Mini",
+    parameters: [catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh"])]
+  },
+  {
+    id: "gpt-5.4-nano",
+    displayName: "GPT-5.4 Nano",
+    parameters: [catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh"])]
+  },
+  {
+    id: "gpt-5.5",
+    displayName: "GPT-5.5",
+    parameters: [
+      catalogParam("context", ["272k", "1m"]),
+      catalogParam("reasoning", ["none", "low", "medium", "high", "extra-high"])
+    ]
+  },
+  {
+    id: "gpt-5.6-luna",
+    displayName: "GPT-5.6 Luna",
+    parameters: [
+      catalogParam("context", ["272k", "1m"]),
+      catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh", "max"])
+    ]
+  },
+  {
+    id: "gpt-5.6-sol",
+    displayName: "GPT-5.6 Sol",
+    parameters: [
+      catalogParam("context", ["272k", "1m"]),
+      catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh", "max"])
+    ]
+  },
+  {
+    id: "gpt-5.6-terra",
+    displayName: "GPT-5.6 Terra",
+    parameters: [
+      catalogParam("context", ["272k", "1m"]),
+      catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh", "max"])
+    ]
+  },
+  {
+    id: "grok-4.5",
+    displayName: "Cursor Grok 4.5",
+    parameters: [catalogParam("effort", ["low", "medium", "high"])]
+  },
+  {
+    id: "grok-4.6",
+    displayName: "Cursor Grok 4.6",
+    parameters: [catalogParam("effort", ["low", "medium", "high", "xhigh"])]
+  },
   { id: "kimi-k2.7-code", displayName: "Kimi K2.7 Code" },
-  { id: "kimi-k3", displayName: "Kimi K3" }
+  {
+    id: "kimi-k3",
+    displayName: "Kimi K3",
+    parameters: [catalogParam("reasoning", ["low", "high", "max"])]
+  }
 ];
 var CURSOR_CONTEXT_WINDOWS = {
-  default: 2e5,
   "claude-fable-5": 1e6,
   "claude-haiku-4-5": 2e5,
   "claude-opus-4-5": 2e5,
@@ -66,11 +220,13 @@ var CURSOR_CONTEXT_WINDOWS = {
   "claude-sonnet-5": 1e6,
   "composer-2": 2e5,
   "composer-2.5": 2e5,
+  default: 2e5,
   "gemini-2.5-flash": 2e5,
   "gemini-3-flash": 2e5,
   "gemini-3.1-pro": 2e5,
   "gemini-3.5-flash": 2e5,
   "gemini-3.6-flash": 2e5,
+  "gemini-3.7-flash": 2e5,
   "glm-5.2": 2e5,
   "gpt-5-mini": 272e3,
   "gpt-5.1": 272e3,
@@ -83,6 +239,7 @@ var CURSOR_CONTEXT_WINDOWS = {
   "gpt-5.6-luna": 1e6,
   "gpt-5.6-sol": 1e6,
   "gpt-5.6-terra": 1e6,
+  "grok-4.5": 2e5,
   "grok-4.6": 256e3,
   "kimi-k2.7-code": 2e5,
   "kimi-k3": 2e5
@@ -159,7 +316,7 @@ function contextWindowFromItem(item) {
 function thinkingFromItem(item) {
   const effort = getParameter(item, "effort") ?? getParameter(item, "reasoning");
   if (!effort) return void 0;
-  const values = effort.values.map((entry) => entry.value.toLowerCase()).filter((value) => KNOWN_EFFORT[value]);
+  const values = effort.values.map((entry) => entry.value.toLowerCase() === "extra-high" ? "xhigh" : entry.value.toLowerCase()).filter((value) => KNOWN_EFFORT[value]);
   const ordered = EFFORT_ORDER.filter((level) => values.includes(level));
   if (ordered.length === 0) return void 0;
   return {
@@ -525,8 +682,8 @@ function cursorSdkProvider(models) {
 }
 function index_default(pi) {
   pi.registerProvider("cursor-sdk", cursorSdkProvider(bootstrapCursorModels));
-  pi.registerCommand("cursor-sdk-refresh-models", {
-    description: "Refresh the live Cursor model catalog",
+  pi.registerCommand("update-catalog", {
+    description: "Update the Cursor model catalog from Cursor.models.list",
     handler: async (_args, ctx) => {
       const raw = await ctx.modelRegistry.getApiKeyForProvider("cursor-sdk");
       const apiKey = resolveCursorApiKey(raw);
@@ -538,12 +695,12 @@ function index_default(pi) {
         const sdk = await loadCursorSdk();
         const listed = await sdk.Cursor.models.list({ apiKey });
         const models = mapCursorModels(listed);
-        pi.registerProvider("cursor-sdk", cursorSdkProvider(models));
+        ctx.modelRegistry.registerProvider("cursor-sdk", cursorSdkProvider(models));
         if (!ctx.hasUI) return;
-        ctx.ui.notify(`Cursor SDK catalog refreshed with ${models.length} models.`, "info");
+        ctx.ui.notify(`Cursor SDK catalog updated with ${models.length} models.`, "info");
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        ctx.ui.notify(`Cursor SDK catalog refresh failed: ${message}`, "error");
+        ctx.ui.notify(`Cursor SDK catalog update failed: ${message}`, "error");
       }
     }
   });

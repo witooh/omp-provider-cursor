@@ -33,10 +33,10 @@ describe("extension registration", () => {
     expect(config.oauth).toBeUndefined();
   });
 
-  it("registers a refresh-models command", () => {
+  it("registers an update-catalog command", () => {
     const { registerCommand } = register();
     expect(registerCommand).toHaveBeenCalledWith(
-      "cursor-sdk-refresh-models",
+      "update-catalog",
       expect.objectContaining({ description: expect.stringContaining("Cursor") }),
     );
   });

@@ -37,10 +37,10 @@ If the key lives in a personal env file, `source` that file in the shell before 
 
 ```text
 /model cursor-sdk/composer-2-5
-/cursor-sdk-refresh-models
+/update-catalog
 ```
 
-The model list is baked into the plugin (34 ids, each with its own context window). Startup does not call `Cursor.models.list`. `/cursor-sdk-refresh-models` is optional and replaces the catalog from Cursor when a key is set. `maxTokens` mirrors each model's context window — Cursor does not publish a separate output cap.
+The model list is baked into the plugin. Startup does not call `Cursor.models.list`. `/update-catalog` replaces the in-session catalog from Cursor when a key is set. `maxTokens` mirrors each model's context window — Cursor does not publish a separate output cap.
 
 ## v1 scope
 

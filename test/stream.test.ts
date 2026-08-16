@@ -74,10 +74,14 @@ mock.module("../src/sdk.js", () => ({
 // bun:test mock.module must load the subject after the mock is registered.
 const { streamCursor } = await import("../src/stream.js");
 
+const originalKey = process.env.CURSOR_API_KEY;
+
 afterEach(() => {
   createCalls.length = 0;
   sendCalls.length = 0;
   fakeRun = createFakeRun([events.thinking("hmm"), events.assistant("hello")]);
+  if (originalKey === undefined) delete process.env.CURSOR_API_KEY;
+  else process.env.CURSOR_API_KEY = originalKey;
 });
 
 const model = {
@@ -114,6 +118,7 @@ async function collect(options?: SimpleStreamOptions) {
 
 describe("streamCursor text", () => {
   it("errors with a key hint when no API key is resolved", async () => {
+    delete process.env.CURSOR_API_KEY;
     const result = await collect({ apiKey: CURSOR_API_KEY_CONFIG_VALUE });
     expect(result.types).toContain("error");
     expect(result.errorMessage).toContain("CURSOR_API_KEY");
