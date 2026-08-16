@@ -1,6 +1,7 @@
 import type { ModelListItem } from "@cursor/sdk";
 import type { ProviderModelConfig } from "@oh-my-pi/pi-coding-agent";
 import { resolveCursorApiKey } from "./api-key.js";
+import { FALLBACK_CATALOG_ITEMS } from "./catalog.generated.js";
 import { lookupCursorContextWindow } from "./context-windows.js";
 import { loadCursorSdk } from "./sdk.js";
 
@@ -23,45 +24,7 @@ const KNOWN_EFFORT: Record<string, true> = {
 };
 const selectionIdByOmpId: Record<string, string> = {};
 
-// Compact snapshot of the 34 public Cursor catalog ids from
-// fitchmultz/pi-cursor-sdk `cursor-fallback-models.generated.ts`
-// (generated with @cursor/sdk@1.0.23). Live list still comes from Cursor.models.list.
-const FALLBACK_CATALOG_ITEMS: readonly ModelListItem[] = [
-  { id: "claude-fable-5", displayName: "Fable 5" },
-  { id: "claude-haiku-4-5", displayName: "Haiku 4.5" },
-  { id: "claude-opus-4-5", displayName: "Opus 4.5" },
-  { id: "claude-opus-4-6", displayName: "Opus 4.6" },
-  { id: "claude-opus-4-7", displayName: "Opus 4.7" },
-  { id: "claude-opus-4-8", displayName: "Opus 4.8" },
-  { id: "claude-opus-5", displayName: "Opus 5" },
-  { id: "claude-sonnet-4", displayName: "Sonnet 4" },
-  { id: "claude-sonnet-4-5", displayName: "Sonnet 4.5" },
-  { id: "claude-sonnet-4-6", displayName: "Sonnet 4.6" },
-  { id: "claude-sonnet-5", displayName: "Sonnet 5" },
-  { id: "composer-2", displayName: "Composer 2" },
-  { id: "composer-2.5", displayName: "Composer 2.5" },
-  { id: "default", displayName: "Auto" },
-  { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash" },
-  { id: "gemini-3-flash", displayName: "Gemini 3 Flash" },
-  { id: "gemini-3.1-pro", displayName: "Gemini 3.1 Pro" },
-  { id: "gemini-3.5-flash", displayName: "Gemini 3.5 Flash" },
-  { id: "gemini-3.6-flash", displayName: "Gemini 3.6 Flash" },
-  { id: "glm-5.2", displayName: "GLM 5.2" },
-  { id: "gpt-5-mini", displayName: "GPT-5 Mini" },
-  { id: "gpt-5.1", displayName: "GPT-5.1" },
-  { id: "gpt-5.2", displayName: "GPT-5.2" },
-  { id: "gpt-5.3-codex", displayName: "Codex 5.3" },
-  { id: "gpt-5.4", displayName: "GPT-5.4" },
-  { id: "gpt-5.4-mini", displayName: "GPT-5.4 Mini" },
-  { id: "gpt-5.4-nano", displayName: "GPT-5.4 Nano" },
-  { id: "gpt-5.5", displayName: "GPT-5.5" },
-  { id: "gpt-5.6-luna", displayName: "GPT-5.6 Luna" },
-  { id: "gpt-5.6-sol", displayName: "GPT-5.6 Sol" },
-  { id: "gpt-5.6-terra", displayName: "GPT-5.6 Terra" },
-  { id: "grok-4.5", displayName: "Cursor Grok 4.5" },
-  { id: "kimi-k2.7-code", displayName: "Kimi K2.7 Code" },
-  { id: "kimi-k3", displayName: "Kimi K3" },
-];
+// Baked catalog lives in catalog.generated.ts. Refresh with the update-catalog skill.
 
 function toProviderModels(items: readonly ModelListItem[]): ProviderModelConfig[] {
   return items.map((item) => {

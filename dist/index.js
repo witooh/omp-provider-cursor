@@ -14,67 +14,7 @@ function resolveCursorApiKey(apiKey) {
   return trimmed;
 }
 
-// src/context-windows.ts
-var DEFAULT_CONTEXT_WINDOW = 2e5;
-var CURSOR_CONTEXT_WINDOWS = {
-  default: 2e5,
-  "claude-fable-5": 1e6,
-  "claude-haiku-4-5": 2e5,
-  "claude-opus-4-5": 2e5,
-  "claude-opus-4-6": 1e6,
-  "claude-opus-4-7": 1e6,
-  "claude-opus-4-8": 1e6,
-  "claude-opus-5": 1e6,
-  "claude-sonnet-4": 2e5,
-  "claude-sonnet-4-5": 2e5,
-  "claude-sonnet-4-6": 1e6,
-  "claude-sonnet-5": 1e6,
-  "composer-2": 2e5,
-  "composer-2.5": 2e5,
-  "gemini-2.5-flash": 2e5,
-  "gemini-3-flash": 2e5,
-  "gemini-3.1-pro": 2e5,
-  "gemini-3.5-flash": 2e5,
-  "gemini-3.6-flash": 2e5,
-  "glm-5.2": 2e5,
-  "gpt-5-mini": 272e3,
-  "gpt-5.1": 272e3,
-  "gpt-5.2": 272e3,
-  "gpt-5.3-codex": 272e3,
-  "gpt-5.4": 1e6,
-  "gpt-5.4-mini": 272e3,
-  "gpt-5.4-nano": 272e3,
-  "gpt-5.5": 1e6,
-  "gpt-5.6-luna": 1e6,
-  "gpt-5.6-sol": 1e6,
-  "gpt-5.6-terra": 1e6,
-  "grok-4.5": 256e3,
-  "kimi-k2.7-code": 2e5,
-  "kimi-k3": 2e5
-};
-function lookupCursorContextWindow(catalogId) {
-  return CURSOR_CONTEXT_WINDOWS[catalogId] ?? DEFAULT_CONTEXT_WINDOW;
-}
-
-// src/sdk.ts
-async function loadCursorSdk() {
-  return import("@cursor/sdk");
-}
-
-// src/models.ts
-var CURSOR_SDK_BASE_URL = "https://cursor.com";
-var ZERO_COST = Object.freeze({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
-var TEXT_AND_IMAGE = ["text", "image"];
-var EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
-var KNOWN_EFFORT = {
-  minimal: true,
-  low: true,
-  medium: true,
-  high: true,
-  xhigh: true,
-  max: true
-};
-var selectionIdByOmpId = {};
+// src/catalog.generated.ts
 var FALLBACK_CATALOG_ITEMS = [
   { id: "claude-fable-5", displayName: "Fable 5" },
   { id: "claude-haiku-4-5", displayName: "Haiku 4.5" },
@@ -107,10 +47,73 @@ var FALLBACK_CATALOG_ITEMS = [
   { id: "gpt-5.6-luna", displayName: "GPT-5.6 Luna" },
   { id: "gpt-5.6-sol", displayName: "GPT-5.6 Sol" },
   { id: "gpt-5.6-terra", displayName: "GPT-5.6 Terra" },
-  { id: "grok-4.5", displayName: "Cursor Grok 4.5" },
+  { id: "grok-4.6", displayName: "Cursor Grok 4.6" },
   { id: "kimi-k2.7-code", displayName: "Kimi K2.7 Code" },
   { id: "kimi-k3", displayName: "Kimi K3" }
 ];
+var CURSOR_CONTEXT_WINDOWS = {
+  default: 2e5,
+  "claude-fable-5": 1e6,
+  "claude-haiku-4-5": 2e5,
+  "claude-opus-4-5": 2e5,
+  "claude-opus-4-6": 1e6,
+  "claude-opus-4-7": 1e6,
+  "claude-opus-4-8": 1e6,
+  "claude-opus-5": 1e6,
+  "claude-sonnet-4": 2e5,
+  "claude-sonnet-4-5": 2e5,
+  "claude-sonnet-4-6": 1e6,
+  "claude-sonnet-5": 1e6,
+  "composer-2": 2e5,
+  "composer-2.5": 2e5,
+  "gemini-2.5-flash": 2e5,
+  "gemini-3-flash": 2e5,
+  "gemini-3.1-pro": 2e5,
+  "gemini-3.5-flash": 2e5,
+  "gemini-3.6-flash": 2e5,
+  "glm-5.2": 2e5,
+  "gpt-5-mini": 272e3,
+  "gpt-5.1": 272e3,
+  "gpt-5.2": 272e3,
+  "gpt-5.3-codex": 272e3,
+  "gpt-5.4": 1e6,
+  "gpt-5.4-mini": 272e3,
+  "gpt-5.4-nano": 272e3,
+  "gpt-5.5": 1e6,
+  "gpt-5.6-luna": 1e6,
+  "gpt-5.6-sol": 1e6,
+  "gpt-5.6-terra": 1e6,
+  "grok-4.6": 256e3,
+  "kimi-k2.7-code": 2e5,
+  "kimi-k3": 2e5
+};
+
+// src/context-windows.ts
+var DEFAULT_CONTEXT_WINDOW = 2e5;
+var CURSOR_CONTEXT_WINDOWS2 = CURSOR_CONTEXT_WINDOWS;
+function lookupCursorContextWindow(catalogId) {
+  return CURSOR_CONTEXT_WINDOWS2[catalogId] ?? DEFAULT_CONTEXT_WINDOW;
+}
+
+// src/sdk.ts
+async function loadCursorSdk() {
+  return import("@cursor/sdk");
+}
+
+// src/models.ts
+var CURSOR_SDK_BASE_URL = "https://cursor.com";
+var ZERO_COST = Object.freeze({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
+var TEXT_AND_IMAGE = ["text", "image"];
+var EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
+var KNOWN_EFFORT = {
+  minimal: true,
+  low: true,
+  medium: true,
+  high: true,
+  xhigh: true,
+  max: true
+};
+var selectionIdByOmpId = {};
 function toProviderModels(items) {
   return items.map((item) => {
     const thinking = thinkingFromItem(item);

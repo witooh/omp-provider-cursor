@@ -14,7 +14,8 @@ describe("bootstrap catalog", () => {
     expect(byId("composer-2-5").name).toBe("Composer 2.5");
     expect(byId("claude-opus-5").name).toBe("Opus 5");
     expect(byId("gpt-5-5").name).toBe("GPT-5.5");
-    expect(byId("grok-4-5").name).toBe("Cursor Grok 4.5");
+    expect(byId("grok-4-6").name).toBe("Cursor Grok 4.6");
+    expect(bootstrapCursorModels.some((model) => model.id === "grok-4-5")).toBe(false);
     expect(byId("kimi-k3").name).toBe("Kimi K3");
   });
 
@@ -22,7 +23,7 @@ describe("bootstrap catalog", () => {
     expect(byId("composer-2-5").contextWindow).toBe(200_000);
     expect(byId("claude-opus-5").contextWindow).toBe(1_000_000);
     expect(byId("gpt-5-5").contextWindow).toBe(1_000_000);
-    expect(byId("grok-4-5").contextWindow).toBe(256_000);
+    expect(byId("grok-4-6").contextWindow).toBe(256_000);
     expect(byId("claude-haiku-4-5").contextWindow).toBe(200_000);
     expect(new Set(bootstrapCursorModels.map((model) => model.contextWindow)).size).toBeGreaterThan(1);
     expect(byId("composer-2-5").maxTokens).toBe(byId("composer-2-5").contextWindow);
