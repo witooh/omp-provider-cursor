@@ -1,136 +1,50 @@
-import { writeFileSync } from "node:fs";
-import { dirname, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
-import type { ModelListItem } from "@cursor/sdk";
-import { resolveCursorApiKey } from "../../../../src/api-key.ts";
-import { CURSOR_CONTEXT_WINDOWS as PREVIOUS_WINDOWS } from "../../../../src/catalog.generated.ts";
-import { loadCursorSdk } from "../../../../src/sdk.ts";
+#!/usr/bin/env bun
+/**
+ * Refresh src/catalog.generated.ts from `cursor-agent models`.
+ *
+ * The CLI is the catalog source of truth: its ids already encode the
+ * reasoning level (`-thinking`, `-high`, `-xhigh`), so they are registered
+ * verbatim. Context windows stay in the hand-maintained table below the
+ * model list; unknown families fall back to 200k at runtime.
+ */
+import { spawnSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
+import { parseAgentModels } from "../../../../src/models.js";
 
-const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "../../../..");
-const OUT = resolve(ROOT, "src/catalog.generated.ts");
-const DEFAULT_WINDOW = 200_000;
-const KEPT_PARAMETER_IDS = new Set(["thinking", "effort", "reasoning", "context"]);
+const CATALOG_PATH = new URL("../../../../src/catalog.generated.ts", import.meta.url).pathname;
+const agentBinary = process.env.CURSOR_AGENT_PATH?.trim() || process.env.AGENT_PATH?.trim() || "cursor-agent";
 
-function parseContextWindow(value: string): number | undefined {
-  const match = /^(\d+(?:\.\d+)?)([km])$/i.exec(value.trim());
-  if (!match) return undefined;
-  const amount = Number(match[1]);
-  const unit = match[2]?.toLowerCase();
-  if (!Number.isFinite(amount)) return undefined;
-  return Math.round(amount * (unit === "m" ? 1_000_000 : 1_000));
+const result = spawnSync(agentBinary, ["models"], { encoding: "utf8", timeout: 60_000 });
+if (result.error) {
+  console.error(`cursor-agent models failed: ${result.error.message}`);
+  process.exit(1);
 }
-
-function largestCatalogContext(item: ModelListItem): number | undefined {
-  const values = item.parameters?.find((parameter) => parameter.id === "context")?.values ?? [];
-  let largest = 0;
-  for (const entry of values) {
-    const parsed = parseContextWindow(entry.value);
-    if (parsed !== undefined && parsed > largest) largest = parsed;
-  }
-  return largest > 0 ? largest : undefined;
-}
-
-function keptParameters(item: ModelListItem): Array<{ id: string; values: string[] }> {
-  const kept: Array<{ id: string; values: string[] }> = [];
-  for (const parameter of item.parameters ?? []) {
-    if (!KEPT_PARAMETER_IDS.has(parameter.id)) continue;
-    const values = parameter.values.map((entry) => entry.value).filter((value) => value.length > 0);
-    if (values.length === 0) continue;
-    kept.push({ id: parameter.id, values });
-  }
-  return kept;
-}
-
-function formatWindow(value: number): string {
-  return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "_");
-}
-
-function quote(value: string): string {
-  return JSON.stringify(value);
-}
-
-function emitItem(item: { id: string; displayName: string; parameters: Array<{ id: string; values: string[] }> }): string {
-  if (item.parameters.length === 0) {
-    return `  { id: ${quote(item.id)}, displayName: ${quote(item.displayName)} },`;
-  }
-  const params = item.parameters
-    .map((parameter) => `catalogParam(${quote(parameter.id)}, [${parameter.values.map(quote).join(", ")}])`)
-    .join(", ");
-  return `  {\n    id: ${quote(item.id)},\n    displayName: ${quote(item.displayName)},\n    parameters: [${params}],\n  },`;
-}
-
-const apiKey = resolveCursorApiKey(process.env.CURSOR_API_KEY);
-if (!apiKey) {
-  console.error("CURSOR_API_KEY is not set in this shell.");
-  console.error("Export it yourself. Do not read personal env files.");
+const models = parseAgentModels(result.stdout ?? "");
+if (models.length === 0) {
+  console.error("cursor-agent models returned no models; keeping the existing catalog");
+  console.error(result.stderr?.trim() ?? "");
   process.exit(1);
 }
 
-const sdk = await loadCursorSdk();
-const listed = await sdk.Cursor.models.list({ apiKey });
-if (listed.length === 0) {
-  console.error("Cursor.models.list returned an empty catalog. Aborting.");
-  process.exit(1);
-}
+const previous = readFileSync(CATALOG_PATH, "utf8");
+const windowsMatch = /export const CURSOR_CONTEXT_WINDOWS: Record<string, number> = \{(?<body>[\s\S]*?)\n\};/.exec(previous);
+const windows = windowsMatch?.groups?.body ?? "";
 
-const items = [...listed]
-  .sort((left, right) => left.id.localeCompare(right.id))
-  .map((item) => ({
-    id: item.id,
-    displayName: item.displayName || item.id,
-    parameters: keptParameters(item),
-  }));
-
-const windows: Record<string, number> = {
-  default: PREVIOUS_WINDOWS.default ?? DEFAULT_WINDOW,
-};
-for (const item of listed) {
-  windows[item.id] = largestCatalogContext(item) ?? PREVIOUS_WINDOWS[item.id] ?? DEFAULT_WINDOW;
-}
-
-const previousIds = new Set(Object.keys(PREVIOUS_WINDOWS).filter((id) => id !== "default"));
-const nextIds = new Set(items.map((item) => item.id));
-const added = [...nextIds].filter((id) => !previousIds.has(id)).sort();
-const removed = [...previousIds].filter((id) => !nextIds.has(id)).sort();
-
-const generatedAt = new Date().toISOString();
-const itemLines = items.map(emitItem).join("\n");
-const windowLines = Object.entries(windows)
-  .sort(([left], [right]) => left.localeCompare(right))
-  .map(([id, value]) => `  ${quote(id)}: ${formatWindow(value)},`)
-  .join("\n");
-
-const source = `import type { ModelListItem } from "@cursor/sdk";
-
-// Generated by \`.omp/skills/update-catalog\`. Do not edit by hand.
-export const CATALOG_GENERATED_AT = ${quote(generatedAt)};
-export const CATALOG_SOURCE = "Cursor.models.list";
-
-function catalogParam(id: string, values: readonly string[]) {
-  return { id, values: values.map((value) => ({ value })) };
-}
-
-export const FALLBACK_CATALOG_ITEMS: readonly ModelListItem[] = [
-${itemLines}
+const lines = [
+  "// Generated by the update-catalog skill from `cursor-agent models`. Do not edit by hand.",
+  "",
+  "export interface CursorCliModelItem {",
+  "  id: string;",
+  "  name: string;",
+  "}",
+  "",
+  "export const FALLBACK_CLI_MODELS: readonly CursorCliModelItem[] = [",
+  ...models.map((model) => `  { id: ${JSON.stringify(model.id)}, name: ${JSON.stringify(model.name)} },`),
+  "];",
+  "",
+  `export const CURSOR_CONTEXT_WINDOWS: Record<string, number> = {${windows}\n};`,
+  "",
 ];
 
-export const CURSOR_CONTEXT_WINDOWS: Record<string, number> = {
-${windowLines}
-};
-`;
-
-writeFileSync(OUT, source);
-console.log(
-  JSON.stringify(
-    {
-      written: OUT,
-      count: items.length,
-      generatedAt,
-      added,
-      removed,
-      withParameters: items.filter((item) => item.parameters.length > 0).length,
-    },
-    null,
-    2,
-  ),
-);
+writeFileSync(CATALOG_PATH, lines.join("\n"));
+console.log(`catalog.generated.ts refreshed with ${models.length} models`);

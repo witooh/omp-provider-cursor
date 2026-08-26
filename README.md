@@ -1,8 +1,18 @@
 # @witooh/omp-provider-cursor
 
-[omp](https://github.com/can1357/oh-my-pi) extension that registers **Cursor SDK** models as provider `cursor-sdk`. Inference goes through `@cursor/sdk` (`Agent.create` / `Agent.send`). Tools stay on the omp tool loop: this provider emits `toolcall_*`, omp executes, the next turn resumes the same live SDK send.
+[omp](https://github.com/can1357/oh-my-pi) extension that registers **Cursor** models as provider `cursor-sdk`. Inference runs through the **Cursor Agent CLI** (`cursor-agent --print --output-format stream-json`), one process per turn.
 
-This is **not** the built-in `cursor` provider (`cursor-agent` → `api2.cursor.sh`). Both can be installed at once.
+Tools stay on the omp tool loop. When the CLI announces a tool call, this provider intercepts the announcement, maps it onto the matching omp tool, and ends the turn — omp asks for approval, executes it, and the next turn ships the result back in the transcript. Nothing is executed inside the Cursor process when a host tool matches.
+
+This is **not** the built-in `cursor` provider. Both can be installed at once.
+
+## Requirements
+
+| Requirement | Details |
+|---|---|
+| omp | ≥ 17.2.15 |
+| Cursor Agent CLI | `cursor-agent` on `PATH` (override with `CURSOR_AGENT_PATH`) |
+| Cursor account | Free or paid; the model list follows your subscription |
 
 ## Install
 
@@ -13,7 +23,7 @@ omp plugin install github:witooh/omp-provider-cursor
 Pin a tag:
 
 ```bash
-omp plugin install github:witooh/omp-provider-cursor#v0.1.0
+omp plugin install github:witooh/omp-provider-cursor#v0.2.0
 ```
 
 Local checkout (dev):
@@ -22,45 +32,41 @@ Local checkout (dev):
 omp plugin link /absolute/path/to/omp-provider-cursor
 ```
 
-Requires omp ≥ 17.2.15 and Node.js 22.13+ (`@cursor/sdk` is pinned to **1.0.28**).
-
 ## Auth
 
-API key only. Cursor Desktop / Agent CLI login and the built-in `cursor` OAuth / `CURSOR_ACCESS_TOKEN` are not reused.
+Either channel works, checked in this order:
 
-1. Create a user or service-account key at [Cursor Dashboard → API Keys](https://cursor.com/dashboard/api).
-2. Export `CURSOR_API_KEY`, or start omp with `--api-key`. `/login` is OAuth-only in omp and is not wired for this provider.
+1. `CURSOR_API_KEY` (or `--api-key`) — forwarded to the CLI as `--api-key`.
+2. The CLI's own login — run `cursor-agent login` once; credentials live in `~/.cursor/`.
 
-If the key lives in a personal env file, `source` that file in the shell before starting omp. This extension never reads that file.
+omp `/login` is OAuth-only and is not wired for this provider. If the key lives in a personal env file, `source` it before starting omp; this extension never reads that file.
 
 ## Usage
 
 ```text
-/model cursor-sdk/composer-2-5
+/model cursor-sdk/auto
+/model cursor-sdk/composer-2.5
+/model cursor-sdk/cursor-grok-4.6-high
 /update-catalog
 ```
 
-The model list is baked into the plugin. Startup does not call `Cursor.models.list`. `/update-catalog` replaces the in-session catalog from Cursor when a key is set. `maxTokens` mirrors each model's context window — Cursor does not publish a separate output cap.
+Model ids are the CLI's own ids, so the reasoning level is part of the id (`-thinking`, `-high`, `-xhigh`, `-fast`). The list is baked into the plugin; `/update-catalog` refreshes it from `cursor-agent models` for the current session.
 
-## v1 scope
+## Behaviour notes
 
-- Local SDK runtime only
-- omp tools via `local.customTools` (Cursor built-ins are off; `tools: ["mcp"]` keeps custom tools)
-- Live-run state in `options.providerSessionState`, keyed by `sessionId`
-- No Cursor Cloud, no MCP bridge server, no native replay cards
+- **Stateless turns.** Every turn sends the whole transcript — system prompt, messages, tool calls, tool results — as one CLI prompt. There is no live session to wedge between tool rounds.
+- **Tool mapping.** `read`/`ls` → `read`, `write` → `write`, `shell`/`delete` → `bash`, `grep` → `grep`, `glob` → `glob`. An `edit` announcement becomes a `bash` command that performs one exact, single-match replacement, so the change still passes omp's approval path.
+- **CLI-owned tools.** A tool with no omp counterpart (todo, web search) stays inside Cursor and is narrated in the output instead of being intercepted.
+- **Images.** `cursor-agent --print` takes no attachments; image parts are replaced with a placeholder note.
+- **Usage.** Token counts come from the CLI's `result` event. Cost is always 0 — billing goes through your Cursor subscription.
 
 ## Development
 
 ```bash
-npm install
+bun install
+bun test
 npm run check
-npm test
 npm run build
-npm run lint
 ```
 
-Tests run on **Bun**. `@oh-my-pi/*` ships TypeScript that needs Bun globals.
-
-## License
-
-MIT
+`npm run catalog:refresh` regenerates `src/catalog.generated.ts` from `cursor-agent models`.

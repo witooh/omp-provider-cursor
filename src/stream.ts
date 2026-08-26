@@ -1,4 +1,3 @@
-import type { SDKMessage } from "@cursor/sdk";
 import type {
   Api,
   AssistantMessage,
@@ -8,24 +7,13 @@ import type {
   SimpleStreamOptions,
   TextContent,
   ThinkingContent,
+  ToolCall,
 } from "@oh-my-pi/pi-ai";
-import { createAssistantMessageEventStream, resolveApiKeyOnce } from "@oh-my-pi/pi-ai";
+import { createAssistantMessageEventStream } from "@oh-my-pi/pi-ai";
 import { resolveCursorApiKey } from "./api-key.js";
-import { cursorSelectionId } from "./models.js";
+import { type AgentEvent, runAgent } from "./cli.js";
 import { buildCursorPrompt } from "./prompt.js";
-import { loadCursorSdk } from "./sdk.js";
-import {
-  buildCustomTools,
-  CursorSdkLiveRun,
-  deleteLiveRun,
-  getLiveRun,
-  type LiveRunReason,
-  putLiveRun,
-  resumeLiveRun,
-  shouldResumeLiveRun,
-} from "./tools.js";
-
-const MISSING_KEY = "Cursor SDK API key is not configured. Set CURSOR_API_KEY or pass --api-key.";
+import { cliToolLabel, mapCliToolCall } from "./tool-map.js";
 
 function emptyUsage() {
   return {
@@ -53,188 +41,84 @@ function makeMessage(
     stopReason,
     timestamp: Date.now(),
     ...(errorMessage ? { errorMessage } : {}),
-  };
+  } as AssistantMessage;
 }
 
-function appendText(partial: AssistantMessage, text: string): number {
-  const last = partial.content.at(-1);
-  if (last?.type === "text") {
-    last.text += text;
-    return partial.content.length - 1;
-  }
-  partial.content.push({ type: "text", text } satisfies TextContent);
-  return partial.content.length - 1;
-}
+/** Tracks one growing text or thinking block across delta and snapshot events. */
+class BlockWriter {
+  #index = -1;
+  #emitted = "";
 
-function appendThinking(partial: AssistantMessage, text: string): number {
-  const last = partial.content.at(-1);
-  if (last?.type === "thinking") {
-    last.thinking += text;
-    return partial.content.length - 1;
-  }
-  partial.content.push({ type: "thinking", thinking: text } satisfies ThinkingContent);
-  return partial.content.length - 1;
-}
+  constructor(
+    private readonly stream: AssistantMessageEventStream,
+    private readonly partial: AssistantMessage,
+    private readonly kind: "text" | "thinking",
+  ) {}
 
-// Measured live (trading-bot + qr-service incidents, grok xhigh): long
-// server-side planning streams zero frames, Cursor's gateway cuts the idle
-// request at ~120s, and @cursor/sdk's immediate retry delivers the finished
-// turn within ~1s. A 120s deadline killed the run one beat before that
-// self-heal. 300s clears the cut+retry cycle while still bounding a truly
-// dead transport; ESC abort remains the instant escape hatch.
-const DEFAULT_STALL_TIMEOUT_MS = 300_000;
-
-let stallTimeoutMs = DEFAULT_STALL_TIMEOUT_MS;
-
-/** Test seam: shrink the provider-silence deadline before arming a turn. */
-export function setStallTimeoutMs(timeoutMs: number): void {
-  stallTimeoutMs = timeoutMs;
-}
-
-interface StallWatchdog {
-  touch: () => void;
-  disarm: () => void;
-}
-
-function armStallWatchdog(live: CursorSdkLiveRun, phase: string): StallWatchdog {
-  let lastActivity = Date.now();
-  const touch = () => {
-    lastActivity = Date.now();
-  };
-  // Events keep flowing through consumers started by earlier turns, so the
-  // liveness hook on the run itself — not this turn's loop — must feed the
-  // deadline while a resumed segment is in flight.
-  live.onActivity = touch;
-  const timer = setInterval(
-    () => {
-      const idleMs = Date.now() - lastActivity;
-      if (idleMs < stallTimeoutMs) return;
-      clearInterval(timer);
-      live.fail(`Cursor SDK stall: no events for ${Math.round(idleMs / 1000)}s while ${phase}`);
-    },
-    Math.max(15, Math.min(1000, Math.floor(stallTimeoutMs / 4))),
-  );
-  return {
-    touch,
-    disarm: () => {
-      clearInterval(timer);
-      if (live.onActivity === touch) live.onActivity = undefined;
-    },
-  };
-}
-
-function bindAbortSignal(live: CursorSdkLiveRun, options: SimpleStreamOptions | undefined): (() => void) | undefined {
-  const signal = options?.signal;
-  if (!signal) return undefined;
-  const onAbort = () => {
-    live.close();
-  };
-  signal.addEventListener("abort", onAbort, { once: true });
-  return () => {
-    signal.removeEventListener("abort", onAbort);
-  };
-}
-
-async function resumeTurn(
-  model: Model<Api>,
-  context: Context,
-  stream: AssistantMessageEventStream,
-  partial: AssistantMessage,
-  existing: CursorSdkLiveRun,
-  options: SimpleStreamOptions | undefined,
-): Promise<void> {
-  if (existing.isDead || existing.finished) {
-    deleteLiveRun(options ?? {});
-    existing.close();
-    const reason = existing.failureMessage ?? "Cursor run ended before its tool results arrived";
-    finish(stream, makeMessage(model, "error", reason), "error");
-    return;
-  }
-  existing.attach(stream, partial);
-  const watchdog = armStallWatchdog(existing, "resuming after tool results");
-  const removeAbort = bindAbortSignal(existing, options);
-  try {
-    const next = existing.waitSegment();
-    resumeLiveRun(context, existing);
-    await settleSegment(model, stream, partial, existing, options, await next);
-  } catch (error) {
-    await settleSegment(model, stream, partial, existing, options, classifyError(options, error));
-  } finally {
-    watchdog.disarm();
-    removeAbort?.();
-  }
-}
-
-async function freshTurn(
-  model: Model<Api>,
-  context: Context,
-  stream: AssistantMessageEventStream,
-  partial: AssistantMessage,
-  options: SimpleStreamOptions | undefined,
-): Promise<void> {
-  const live = new CursorSdkLiveRun();
-  live.attach(stream, partial);
-  if (options?.providerSessionState) putLiveRun(options, live);
-
-  const watchdog = armStallWatchdog(live, "starting the run");
-  const removeAbort = bindAbortSignal(live, options);
-  try {
-    const rawKey = await resolveApiKeyOnce(options?.apiKey, options?.signal);
-    watchdog.touch();
-    const apiKey = resolveCursorApiKey(rawKey);
-    if (!apiKey) {
-      deleteLiveRun(options ?? {});
-      finish(stream, makeMessage(model, "error", MISSING_KEY), "error");
-      return;
+  /** Emit whatever part of `incoming` the consumer has not seen yet. */
+  write(incoming: string): void {
+    if (!incoming) return;
+    let delta = incoming;
+    if (this.#emitted.length > 0) {
+      if (incoming.startsWith(this.#emitted)) {
+        delta = incoming.slice(this.#emitted.length);
+        this.#emitted = incoming;
+      } else if (this.#emitted.startsWith(incoming)) {
+        return;
+      } else {
+        this.#emitted += incoming;
+      }
+    } else {
+      this.#emitted = incoming;
     }
-    if (options?.signal?.aborted) throw new Error("aborted");
+    if (!delta) return;
 
-    const sdk = await loadCursorSdk();
-    watchdog.touch();
-    const cwd = options?.cwd ?? process.cwd();
-    const selectionId = cursorSelectionId(model.id);
-    const agent = await sdk.Agent.create({
-      apiKey,
-      model: { id: selectionId },
-      tools: ["mcp"],
-      local: { cwd, customTools: buildCustomTools(context.tools, live) },
-    });
-    watchdog.touch();
-    live.agent = agent;
-    if (live.isDead) throw new Error(live.failureMessage ?? "aborted");
-
-    const next = live.waitSegment();
-    // The watchdog or the abort signal may terminate the segment while the
-    // send handshake is still in flight; race them so we always settle.
-    // onStep is a public SDK hook that fires at turn-phase boundaries even
-    // when the transport streams no frames (e.g. queued or cut-and-retried
-    // requests); each step proves the run is alive and resets the deadline.
-    const sendPromise = agent.send(buildCursorPrompt(context), {
-      model: { id: selectionId },
-      onStep: () => live.touch(),
-    });
-    const interrupted = await Promise.race([sendPromise.then(() => null as LiveRunReason | null), next]);
-    if (interrupted !== null) {
-      void sendPromise
-        .then((run) => {
-          live.run = run;
-          return run.cancel();
-        })
-        .catch(() => {});
-      await settleSegment(model, stream, partial, live, options, interrupted);
-      return;
+    if (this.#index < 0) {
+      if (this.kind === "text") {
+        this.partial.content.push({ type: "text", text: "" } satisfies TextContent);
+      } else {
+        this.partial.content.push({ type: "thinking", thinking: "" } satisfies ThinkingContent);
+      }
+      this.#index = this.partial.content.length - 1;
+      this.stream.push({
+        type: this.kind === "text" ? "text_start" : "thinking_start",
+        contentIndex: this.#index,
+        partial: this.partial,
+      });
     }
-    const run = await sendPromise;
-    watchdog.touch();
-    live.run = run;
-    void consumeRun(live, stream, partial, run);
-    await settleSegment(model, stream, partial, live, options, await next);
-  } catch (error) {
-    await settleSegment(model, stream, partial, live, options, classifyError(options, error));
-  } finally {
-    watchdog.disarm();
-    removeAbort?.();
+
+    const block = this.partial.content[this.#index];
+    if (this.kind === "text" && block?.type === "text") block.text += delta;
+    if (this.kind === "thinking" && block?.type === "thinking") block.thinking += delta;
+
+    this.stream.push({
+      type: this.kind === "text" ? "text_delta" : "thinking_delta",
+      contentIndex: this.#index,
+      delta,
+      partial: this.partial,
+    });
   }
+}
+
+function applyUsage(partial: AssistantMessage, event: AgentEvent): void {
+  const usage = event.usage;
+  if (!usage) return;
+  partial.usage.input = usage.inputTokens ?? 0;
+  partial.usage.output = usage.outputTokens ?? 0;
+  partial.usage.cacheRead = usage.cacheReadTokens ?? 0;
+  partial.usage.cacheWrite = usage.cacheWriteTokens ?? 0;
+  partial.usage.totalTokens =
+    partial.usage.input + partial.usage.output + partial.usage.cacheRead + partial.usage.cacheWrite;
+}
+
+function firstToolEntry(event: AgentEvent): { cliKey: string; args: Record<string, unknown> } | undefined {
+  const call = event.tool_call;
+  if (!call) return undefined;
+  for (const [cliKey, payload] of Object.entries(call)) {
+    if (!cliKey.endsWith("ToolCall")) continue;
+    return { cliKey, args: (payload?.args ?? {}) as Record<string, unknown> };
+  }
+  return undefined;
 }
 
 export function streamCursor(model: Model<Api>, context: Context, options?: SimpleStreamOptions) {
@@ -243,128 +127,107 @@ export function streamCursor(model: Model<Api>, context: Context, options?: Simp
 
   void (async () => {
     stream.push({ type: "start", partial });
-    const existing = getLiveRun(options ?? {});
-    if (existing && shouldResumeLiveRun(context, existing)) {
-      await resumeTurn(model, context, stream, partial, existing, options);
+
+    const run = runAgent({
+      prompt: buildCursorPrompt(context),
+      model: model.id,
+      cwd: options?.cwd ?? process.cwd(),
+      apiKey: resolveCursorApiKey(typeof options?.apiKey === "string" ? options.apiKey : undefined),
+    });
+
+    const onAbort = () => {
+      run.kill();
+    };
+    options?.signal?.addEventListener("abort", onAbort, { once: true });
+
+    const offered = new Set((context.tools ?? []).map((tool) => tool.name));
+    const text = new BlockWriter(stream, partial, "text");
+    const thinking = new BlockWriter(stream, partial, "thinking");
+    let handedOver: ToolCall | undefined;
+
+    try {
+      for await (const event of run.events) {
+        if (event.type === "thinking") {
+          thinking.write(event.text ?? "");
+          continue;
+        }
+
+        if (event.type === "assistant") {
+          for (const block of event.message?.content ?? []) {
+            if (block.type === "text") text.write(block.text ?? "");
+          }
+          continue;
+        }
+
+        if (event.type === "tool_call" && event.subtype === "started") {
+          const entry = firstToolEntry(event);
+          if (!entry) continue;
+          const mapped = mapCliToolCall(entry.cliKey, entry.args, offered);
+          if (!mapped) {
+            // No host tool matches; the CLI keeps that call and we only narrate it.
+            text.write(`\n[${cliToolLabel(entry.cliKey)} ran inside Cursor]\n`);
+            continue;
+          }
+          // Kill first: the CLI would otherwise execute this call itself.
+          run.kill();
+          handedOver = {
+            type: "toolCall",
+            id: event.call_id ?? `cursor-${Date.now()}`,
+            name: mapped.name,
+            arguments: mapped.args,
+          };
+          partial.content.push(handedOver);
+          const index = partial.content.length - 1;
+          stream.push({ type: "toolcall_start", contentIndex: index, partial });
+          stream.push({ type: "toolcall_delta", contentIndex: index, delta: JSON.stringify(mapped.args), partial });
+          stream.push({ type: "toolcall_end", contentIndex: index, toolCall: handedOver, partial });
+          break;
+        }
+
+        if (event.type === "result") {
+          applyUsage(partial, event);
+          break;
+        }
+      }
+    } finally {
+      options?.signal?.removeEventListener("abort", onAbort);
+    }
+
+    const { code, stderr } = await run.outcome;
+
+    if (options?.signal?.aborted) {
+      const message = makeMessage(model, "aborted", "aborted");
+      stream.push({ type: "error", reason: "aborted", error: message });
+      stream.end(message);
       return;
     }
-    existing?.close();
-    deleteLiveRun(options ?? {});
-    await freshTurn(model, context, stream, partial, options);
+
+    if (handedOver) {
+      partial.stopReason = "toolUse";
+      stream.push({ type: "done", reason: "toolUse", message: partial });
+      stream.end(partial);
+      return;
+    }
+
+    const producedOutput = partial.content.some(
+      (block) => (block.type === "text" && block.text.length > 0) || block.type === "thinking",
+    );
+    if (!producedOutput && code !== 0) {
+      const message = makeMessage(model, "error", stderr || `Cursor CLI exited with code ${code}`);
+      stream.push({ type: "error", reason: "error", error: message });
+      stream.end(message);
+      return;
+    }
+
+    partial.stopReason = "stop";
+    stream.push({ type: "done", reason: "stop", message: partial });
+    stream.end(partial);
   })().catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    finish(stream, makeMessage(model, "error", message), "error");
+    const detail = error instanceof Error ? error.message : String(error);
+    const message = makeMessage(model, "error", detail);
+    stream.push({ type: "error", reason: "error", error: message });
+    stream.end(message);
   });
 
   return stream;
-}
-
-async function consumeRun(
-  live: CursorSdkLiveRun,
-  stream: AssistantMessageEventStream,
-  fallback: AssistantMessage,
-  run: { stream(): AsyncGenerator<SDKMessage, void> },
-): Promise<void> {
-  try {
-    for await (const event of run.stream()) {
-      live.touch();
-      const target = live.partial ?? fallback;
-      const out = live.stream ?? stream;
-      const terminal = applySdkEvent(out, target, live, event);
-      if (terminal) {
-        live.finished = true;
-        live.endSegment(terminal);
-        return;
-      }
-    }
-    live.finished = true;
-    live.endSegment("stop");
-  } catch (error) {
-    live.finished = true;
-    live.endSegment(error instanceof Error && error.message === "aborted" ? "aborted" : "error");
-  }
-}
-
-async function settleSegment(
-  model: Model<Api>,
-  stream: AssistantMessageEventStream,
-  partial: AssistantMessage,
-  live: CursorSdkLiveRun,
-  options: SimpleStreamOptions | undefined,
-  reason: LiveRunReason,
-): Promise<void> {
-  if (reason === "toolUse") {
-    if (!options?.providerSessionState) {
-      live.close();
-      finish(stream, makeMessage(model, "error", "providerSessionState is required for Cursor SDK tools"), "error");
-      return;
-    }
-    partial.stopReason = "toolUse";
-    stream.push({ type: "done", reason: "toolUse", message: partial });
-    stream.end(partial);
-    live.markStreamEnded();
-    return;
-  }
-
-  deleteLiveRun(options ?? {});
-  if (reason === "aborted" || options?.signal?.aborted) {
-    live.close();
-    finish(stream, makeMessage(model, "aborted", "aborted"), "aborted");
-    return;
-  }
-  if (reason === "error") {
-    live.close();
-    finish(stream, makeMessage(model, "error", live.failureMessage ?? "Cursor SDK run failed"), "error");
-    return;
-  }
-  live.close();
-  partial.stopReason = "stop";
-  stream.push({ type: "done", reason: "stop", message: partial });
-  stream.end(partial);
-  live.markStreamEnded();
-}
-
-function classifyError(options: SimpleStreamOptions | undefined, error: unknown): LiveRunReason {
-  if (options?.signal?.aborted || (error instanceof Error && error.message === "aborted")) return "aborted";
-  return "error";
-}
-
-function finish(stream: AssistantMessageEventStream, message: AssistantMessage, reason: "error" | "aborted"): void {
-  stream.push({ type: "error", reason, error: message });
-  stream.end(message);
-}
-
-function applySdkEvent(
-  stream: AssistantMessageEventStream,
-  partial: AssistantMessage,
-  live: CursorSdkLiveRun,
-  event: SDKMessage,
-): LiveRunReason | undefined {
-  if (event.type === "status") {
-    if (event.status === "ERROR") {
-      live.failureMessage = event.message ?? "Cursor SDK run failed";
-      return "error";
-    }
-    if (event.status === "CANCELLED") return "aborted";
-    return undefined;
-  }
-  if (event.type === "thinking" && event.text) {
-    const index = appendThinking(partial, event.text);
-    if (partial.content[index]?.type === "thinking" && partial.content[index].thinking === event.text) {
-      stream.push({ type: "thinking_start", contentIndex: index, partial });
-    }
-    stream.push({ type: "thinking_delta", contentIndex: index, delta: event.text, partial });
-    return undefined;
-  }
-  if (event.type === "assistant") {
-    for (const block of event.message.content) {
-      if (block.type !== "text" || !block.text) continue;
-      const index = appendText(partial, block.text);
-      if ((partial.content[index] as TextContent).text === block.text) {
-        stream.push({ type: "text_start", contentIndex: index, partial });
-      }
-      stream.push({ type: "text_delta", contentIndex: index, delta: block.text, partial });
-    }
-  }
-  return undefined;
 }

@@ -1,44 +1,94 @@
-import type { SDKImage, SDKUserMessage } from "@cursor/sdk";
-import type { Context, ImageContent, Message } from "@oh-my-pi/pi-ai";
+import type { Context, Message } from "@oh-my-pi/pi-ai";
 
-function textOf(content: string | Array<{ type: string; text?: string }>): string {
+/**
+ * The CLI takes one text prompt per run and keeps no state between runs, so
+ * every turn ships the whole transcript: system prompt, messages, the tool
+ * calls the model asked for, and the results the host produced.
+ */
+
+interface ContentPart {
+  type: string;
+  text?: string;
+  thinking?: string;
+  mimeType?: string;
+  data?: string;
+  name?: string;
+  id?: string;
+  arguments?: unknown;
+}
+
+function partToText(part: ContentPart): string {
+  if (part.type === "text" && typeof part.text === "string") return part.text;
+  if (part.type === "image") {
+    // `cursor-agent --print` takes no attachments; keep the intent visible.
+    return `[image omitted: ${part.mimeType ?? "unknown type"} — the Cursor CLI cannot receive attachments]`;
+  }
+  return "";
+}
+
+function contentToText(content: string | ContentPart[]): string {
   if (typeof content === "string") return content;
   return content
-    .filter((part) => part.type === "text" && typeof part.text === "string")
-    .map((part) => part.text)
-    .join("");
+    .map(partToText)
+    .filter((text) => text.length > 0)
+    .join("\n");
 }
 
-function latestUser(messages: Message[]) {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message.role === "user") return message;
-  }
-  return undefined;
-}
-
-function imagesOf(content: string | Array<{ type: string }>): SDKImage[] {
+function toolCallsOf(content: string | ContentPart[]): ContentPart[] {
   if (typeof content === "string") return [];
-  const images: SDKImage[] = [];
-  for (const part of content) {
-    if (part.type !== "image") continue;
-    const image = part as ImageContent;
-    images.push({ data: image.data, mimeType: image.mimeType });
-  }
-  return images;
+  return content.filter((part) => part.type === "toolCall");
 }
 
-export function buildCursorPrompt(context: Context): SDKUserMessage {
-  const user = latestUser(context.messages);
-  const latest = user ? textOf(user.content) : "Continue.";
-  const history: string[] = [];
-  if (context.systemPrompt?.length) history.push(context.systemPrompt.join("\n"));
-  for (const message of context.messages) {
-    if (message === user) continue;
-    if (message.role === "user") history.push(`User: ${textOf(message.content)}`);
-    if (message.role === "assistant") history.push(`Assistant: ${textOf(message.content)}`);
+function renderAssistant(content: string | ContentPart[], lines: string[]): void {
+  const text = contentToText(content);
+  if (text.trim().length > 0) lines.push(`[Assistant]\n${text}`);
+  for (const call of toolCallsOf(content)) {
+    const args = JSON.stringify(call.arguments ?? {});
+    lines.push(`[Tool call: ${call.name ?? "unknown"} id=${call.id ?? "?"}]\n${args}`);
   }
-  const text = history.length > 0 ? `${history.join("\n\n")}\n\nUser: ${latest}` : latest;
-  const images = user ? imagesOf(user.content) : [];
-  return images.length > 0 ? { text, images } : { text };
+}
+
+function renderToolResult(
+  message: Message & { toolName?: string; toolCallId?: string; isError?: boolean },
+  lines: string[],
+): void {
+  const body = contentToText(message.content as string | ContentPart[]);
+  const status = message.isError ? " (failed)" : "";
+  lines.push(`[Tool result: ${message.toolName ?? "unknown"} id=${message.toolCallId ?? "?"}${status}]\n${body}`);
+}
+
+function endsWithToolResults(messages: Message[]): boolean {
+  return messages.at(-1)?.role === "toolResult";
+}
+
+export function buildCursorPrompt(context: Context): string {
+  const lines: string[] = [];
+
+  if (context.systemPrompt?.length) {
+    lines.push(`[System]\n${context.systemPrompt.join("\n")}`);
+  }
+
+  for (const message of context.messages) {
+    if (message.role === "user") {
+      lines.push(`[User]\n${contentToText(message.content as string | ContentPart[])}`);
+      continue;
+    }
+    if (message.role === "assistant") {
+      renderAssistant(message.content as string | ContentPart[], lines);
+      continue;
+    }
+    if (message.role === "toolResult") {
+      renderToolResult(message, lines);
+    }
+  }
+
+  if (endsWithToolResults(context.messages)) {
+    lines.push(
+      "[Host]\nThe tool calls above already ran on the host and their results are shown." +
+        " Continue from that state; never repeat a completed call." +
+        " When you need another tool, call it normally — the host executes it and returns the result the same way.",
+    );
+  }
+
+  return lines.join("\n\n");
 }

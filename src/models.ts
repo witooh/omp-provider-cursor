@@ -1,105 +1,94 @@
-import type { ModelListItem } from "@cursor/sdk";
 import type { ProviderModelConfig } from "@oh-my-pi/pi-coding-agent";
-import { resolveCursorApiKey } from "./api-key.js";
-import { FALLBACK_CATALOG_ITEMS } from "./catalog.generated.js";
-import { lookupCursorContextWindow } from "./context-windows.js";
-import { loadCursorSdk } from "./sdk.js";
+import { CURSOR_CONTEXT_WINDOWS, type CursorCliModelItem, FALLBACK_CLI_MODELS } from "./catalog.generated.js";
+import { resolveAgentBinary } from "./cli.js";
+import { DEFAULT_CONTEXT_WINDOW } from "./context-windows.js";
 
-export const CURSOR_SDK_BASE_URL = "https://cursor.com";
+export const CURSOR_CLI_BASE_URL = "https://cursor.com";
 export { DEFAULT_CONTEXT_WINDOW as FALLBACK_CONTEXT_WINDOW } from "./context-windows.js";
 
 const ZERO_COST = Object.freeze({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
-const TEXT_AND_IMAGE = ["text", "image"] as const;
+/** `cursor-agent --print` takes no attachments, so images never reach the model. */
+const TEXT_ONLY = ["text"] as const;
+const MODELS_TIMEOUT_MS = 20_000;
 
-type Thinking = NonNullable<ProviderModelConfig["thinking"]>;
+/** CLI ids carry their reasoning level, e.g. `-thinking`, `-high`, `-xhigh`. */
+const REASONING_SUFFIX = /(?:thinking|none|minimal|low|medium|high|xhigh|max)(?:-fast)?$/;
 
-const EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"] as const;
-const KNOWN_EFFORT: Record<string, true> = {
-  minimal: true,
-  low: true,
-  medium: true,
-  high: true,
-  xhigh: true,
-  max: true,
-};
-const selectionIdByOmpId: Record<string, string> = {};
+export function inferReasoning(id: string): boolean {
+  return REASONING_SUFFIX.test(id);
+}
 
-// Baked catalog lives in catalog.generated.ts. Refresh with the update-catalog skill.
+/**
+ * Context windows are published per SDK-style family id, while CLI ids append
+ * their reasoning level. Match the longest family prefix, else fall back.
+ */
+export function contextWindowFor(id: string): number {
+  let best = 0;
+  let window = DEFAULT_CONTEXT_WINDOW;
+  for (const [family, size] of Object.entries(CURSOR_CONTEXT_WINDOWS)) {
+    if (!id.startsWith(family) || family.length <= best) continue;
+    best = family.length;
+    window = size;
+  }
+  return window;
+}
 
-function toProviderModels(items: readonly ModelListItem[]): ProviderModelConfig[] {
+export function parseAgentModels(output: string): CursorCliModelItem[] {
+  const models: CursorCliModelItem[] = [];
+  const seen = new Set<string>();
+  for (const raw of output.split("\n")) {
+    const line = raw.trim();
+    const match = /^([A-Za-z0-9._@/:-]+) - (.+)$/.exec(line);
+    if (!match) continue;
+    const id = match[1];
+    if (id.endsWith(":")) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    models.push({ id, name: match[2].replace(/\s*\(current, default\)$/, "").trim() });
+  }
+  return models;
+}
+
+export function toProviderModels(items: readonly CursorCliModelItem[]): ProviderModelConfig[] {
   return items.map((item) => {
-    const thinking = thinkingFromItem(item);
-    const ompId = item.id.replace(/(\d)\.(\d)/g, "$1-$2");
-    const contextWindow = contextWindowFromItem(item);
-    selectionIdByOmpId[ompId] = item.id;
+    const contextWindow = contextWindowFor(item.id);
     return {
-      id: ompId,
-      name: item.displayName || item.id,
-      reasoning: thinking !== undefined,
-      ...(thinking ? { thinking } : {}),
-      input: [...TEXT_AND_IMAGE],
+      id: item.id,
+      name: item.name || item.id,
+      reasoning: inferReasoning(item.id),
+      input: [...TEXT_ONLY],
       cost: { ...ZERO_COST },
       contextWindow,
       maxTokens: contextWindow,
-    };
+    } satisfies ProviderModelConfig;
   });
 }
 
-export const bootstrapCursorModels: ProviderModelConfig[] = toProviderModels(FALLBACK_CATALOG_ITEMS);
+export const bootstrapCursorModels: ProviderModelConfig[] = toProviderModels(FALLBACK_CLI_MODELS);
 
-export function cursorSelectionId(ompId: string): string {
-  return selectionIdByOmpId[ompId] ?? ompId;
-}
+/** Live catalog for the signed-in account; falls back to the baked list. */
+export async function fetchCursorModels(): Promise<ProviderModelConfig[]> {
+  const { spawn } = await import("node:child_process");
+  const { promise, resolve } = Promise.withResolvers<ProviderModelConfig[]>();
+  const child = spawn(resolveAgentBinary(), ["models"], { stdio: ["ignore", "pipe", "pipe"] });
+  const chunks: string[] = [];
+  const timer = setTimeout(() => {
+    child.kill("SIGTERM");
+    resolve(bootstrapCursorModels);
+  }, MODELS_TIMEOUT_MS);
 
-function getParameter(item: ModelListItem, id: string) {
-  return item.parameters?.find((parameter) => parameter.id === id);
-}
+  child.stdout?.on("data", (chunk: Buffer) => {
+    chunks.push(chunk.toString("utf8"));
+  });
+  child.on("error", () => {
+    clearTimeout(timer);
+    resolve(bootstrapCursorModels);
+  });
+  child.on("close", () => {
+    clearTimeout(timer);
+    const parsed = parseAgentModels(chunks.join(""));
+    resolve(parsed.length > 0 ? toProviderModels(parsed) : bootstrapCursorModels);
+  });
 
-function parseContextWindow(value: string): number | undefined {
-  const match = /^(\d+(?:\.\d+)?)([km])$/i.exec(value.trim());
-  if (!match) return undefined;
-  const amount = Number(match[1]);
-  const unit = match[2]?.toLowerCase();
-  if (!Number.isFinite(amount)) return undefined;
-  return Math.round(amount * (unit === "m" ? 1_000_000 : 1_000));
-}
-
-function contextWindowFromItem(item: ModelListItem): number {
-  const values = getParameter(item, "context")?.values ?? [];
-  let largest = 0;
-  for (const entry of values) {
-    const parsed = parseContextWindow(entry.value);
-    if (parsed !== undefined && parsed > largest) largest = parsed;
-  }
-  return largest > 0 ? largest : lookupCursorContextWindow(item.id);
-}
-
-function thinkingFromItem(item: ModelListItem): Thinking | undefined {
-  const effort = getParameter(item, "effort") ?? getParameter(item, "reasoning");
-  if (!effort) return undefined;
-  const values = effort.values
-    .map((entry) => (entry.value.toLowerCase() === "extra-high" ? "xhigh" : entry.value.toLowerCase()))
-    .filter((value) => KNOWN_EFFORT[value]);
-  const ordered = EFFORT_ORDER.filter((level) => values.includes(level));
-  if (ordered.length === 0) return undefined;
-  return {
-    mode: "effort",
-    efforts: ordered as unknown as Thinking["efforts"],
-  };
-}
-
-export function mapCursorModels(items: readonly ModelListItem[]): ProviderModelConfig[] {
-  if (items.length === 0) return bootstrapCursorModels;
-  return toProviderModels(items);
-}
-
-export async function fetchCursorModels(apiKey: string | undefined): Promise<ProviderModelConfig[]> {
-  const key = resolveCursorApiKey(apiKey);
-  if (!key) return bootstrapCursorModels;
-  try {
-    const sdk = await loadCursorSdk();
-    return mapCursorModels(await sdk.Cursor.models.list({ apiKey: key }));
-  } catch {
-    return bootstrapCursorModels;
-  }
+  return promise;
 }

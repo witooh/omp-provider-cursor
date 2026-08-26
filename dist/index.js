@@ -14,197 +14,211 @@ function resolveCursorApiKey(apiKey) {
 }
 
 // src/catalog.generated.ts
-function catalogParam(id, values) {
-  return { id, values: values.map((value) => ({ value })) };
-}
-var FALLBACK_CATALOG_ITEMS = [
-  {
-    id: "claude-fable-5",
-    displayName: "Fable 5",
-    parameters: [
-      catalogParam("thinking", ["false", "true"]),
-      catalogParam("context", ["300k", "1m"]),
-      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  {
-    id: "claude-haiku-4-5",
-    displayName: "Haiku 4.5",
-    parameters: [catalogParam("thinking", ["false", "true"])]
-  },
-  {
-    id: "claude-opus-4-5",
-    displayName: "Opus 4.5",
-    parameters: [catalogParam("thinking", ["false", "true"])]
-  },
-  {
-    id: "claude-opus-4-6",
-    displayName: "Opus 4.6",
-    parameters: [
-      catalogParam("thinking", ["false", "true"]),
-      catalogParam("context", ["200k", "1m"]),
-      catalogParam("effort", ["low", "medium", "high", "max"])
-    ]
-  },
-  {
-    id: "claude-opus-4-7",
-    displayName: "Opus 4.7",
-    parameters: [
-      catalogParam("thinking", ["false", "true"]),
-      catalogParam("context", ["300k", "1m"]),
-      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  {
-    id: "claude-opus-4-8",
-    displayName: "Opus 4.8",
-    parameters: [
-      catalogParam("thinking", ["false", "true"]),
-      catalogParam("context", ["300k", "1m"]),
-      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  {
-    id: "claude-opus-5",
-    displayName: "Opus 5",
-    parameters: [
-      catalogParam("thinking", ["false", "true"]),
-      catalogParam("context", ["300k", "1m"]),
-      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  {
-    id: "claude-sonnet-4",
-    displayName: "Sonnet 4",
-    parameters: [catalogParam("thinking", ["false", "true"]), catalogParam("context", ["200k"])]
-  },
-  {
-    id: "claude-sonnet-4-5",
-    displayName: "Sonnet 4.5",
-    parameters: [catalogParam("thinking", ["false", "true"]), catalogParam("context", ["200k"])]
-  },
-  {
-    id: "claude-sonnet-4-6",
-    displayName: "Sonnet 4.6",
-    parameters: [
-      catalogParam("thinking", ["false", "true"]),
-      catalogParam("context", ["200k", "1m"]),
-      catalogParam("effort", ["low", "medium", "high", "max"])
-    ]
-  },
-  {
-    id: "claude-sonnet-5",
-    displayName: "Sonnet 5",
-    parameters: [
-      catalogParam("thinking", ["false", "true"]),
-      catalogParam("context", ["300k", "1m"]),
-      catalogParam("effort", ["low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  { id: "composer-2", displayName: "Composer 2" },
-  { id: "composer-2.5", displayName: "Composer 2.5" },
-  { id: "default", displayName: "Auto" },
-  { id: "gemini-2.5-flash", displayName: "Gemini 2.5 Flash" },
-  { id: "gemini-3-flash", displayName: "Gemini 3 Flash" },
-  { id: "gemini-3.1-pro", displayName: "Gemini 3.1 Pro" },
-  { id: "gemini-3.5-flash", displayName: "Gemini 3.5 Flash" },
-  {
-    id: "gemini-3.6-flash",
-    displayName: "Gemini 3.6 Flash",
-    parameters: [catalogParam("effort", ["minimal", "low", "medium", "high"])]
-  },
-  {
-    id: "gemini-3.7-flash",
-    displayName: "Gemini 3.7 Flash",
-    parameters: [catalogParam("effort", ["low", "medium", "high"])]
-  },
-  {
-    id: "glm-5.2",
-    displayName: "GLM 5.2",
-    parameters: [catalogParam("reasoning", ["high", "max"])]
-  },
-  { id: "gpt-5-mini", displayName: "GPT-5 Mini" },
-  {
-    id: "gpt-5.1",
-    displayName: "GPT-5.1",
-    parameters: [catalogParam("reasoning", ["low", "medium", "high"])]
-  },
-  {
-    id: "gpt-5.2",
-    displayName: "GPT-5.2",
-    parameters: [catalogParam("reasoning", ["low", "medium", "high", "extra-high"])]
-  },
-  {
-    id: "gpt-5.3-codex",
-    displayName: "Codex 5.3",
-    parameters: [catalogParam("reasoning", ["low", "medium", "high", "extra-high"])]
-  },
-  {
-    id: "gpt-5.4",
-    displayName: "GPT-5.4",
-    parameters: [
-      catalogParam("context", ["272k", "1m"]),
-      catalogParam("reasoning", ["none", "low", "medium", "high", "extra-high"])
-    ]
-  },
-  {
-    id: "gpt-5.4-mini",
-    displayName: "GPT-5.4 Mini",
-    parameters: [catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh"])]
-  },
-  {
-    id: "gpt-5.4-nano",
-    displayName: "GPT-5.4 Nano",
-    parameters: [catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh"])]
-  },
-  {
-    id: "gpt-5.5",
-    displayName: "GPT-5.5",
-    parameters: [
-      catalogParam("context", ["272k", "1m"]),
-      catalogParam("reasoning", ["none", "low", "medium", "high", "extra-high"])
-    ]
-  },
-  {
-    id: "gpt-5.6-luna",
-    displayName: "GPT-5.6 Luna",
-    parameters: [
-      catalogParam("context", ["272k", "1m"]),
-      catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  {
-    id: "gpt-5.6-sol",
-    displayName: "GPT-5.6 Sol",
-    parameters: [
-      catalogParam("context", ["272k", "1m"]),
-      catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  {
-    id: "gpt-5.6-terra",
-    displayName: "GPT-5.6 Terra",
-    parameters: [
-      catalogParam("context", ["272k", "1m"]),
-      catalogParam("reasoning", ["none", "low", "medium", "high", "xhigh", "max"])
-    ]
-  },
-  {
-    id: "grok-4.5",
-    displayName: "Cursor Grok 4.5",
-    parameters: [catalogParam("effort", ["low", "medium", "high"])]
-  },
-  {
-    id: "grok-4.6",
-    displayName: "Cursor Grok 4.6",
-    parameters: [catalogParam("effort", ["low", "medium", "high", "xhigh"])]
-  },
-  { id: "kimi-k2.7-code", displayName: "Kimi K2.7 Code" },
-  {
-    id: "kimi-k3",
-    displayName: "Kimi K3",
-    parameters: [catalogParam("reasoning", ["low", "high", "max"])]
-  }
+var FALLBACK_CLI_MODELS = [
+  { id: "auto", name: "Auto" },
+  { id: "gpt-5.3-codex-low", name: "Codex 5.3 Low" },
+  { id: "gpt-5.3-codex-low-fast", name: "Codex 5.3 Low Fast" },
+  { id: "gpt-5.3-codex", name: "Codex 5.3" },
+  { id: "gpt-5.3-codex-fast", name: "Codex 5.3 Fast" },
+  { id: "gpt-5.3-codex-high", name: "Codex 5.3 High" },
+  { id: "gpt-5.3-codex-high-fast", name: "Codex 5.3 High Fast" },
+  { id: "gpt-5.3-codex-xhigh", name: "Codex 5.3 Extra High" },
+  { id: "gpt-5.3-codex-xhigh-fast", name: "Codex 5.3 Extra High Fast" },
+  { id: "gpt-5.2", name: "GPT-5.2" },
+  { id: "cursor-grok-4.6-high-fast", name: "Cursor Grok 4.6 Fast" },
+  { id: "composer-2.5", name: "Composer 2.5" },
+  { id: "claude-opus-5-thinking-high", name: "Claude Opus 5 1M Thinking" },
+  { id: "claude-opus-5-thinking-high-fast", name: "Claude Opus 5 1M Thinking Fast" },
+  { id: "gpt-5.6-sol-high", name: "GPT-5.6 Sol 1M High" },
+  { id: "gpt-5.6-sol-high-fast", name: "GPT-5.6 Sol High Fast" },
+  { id: "gpt-5.6-sol-xhigh", name: "GPT-5.6 Sol 1M Extra High" },
+  { id: "gpt-5.6-sol-xhigh-fast", name: "GPT-5.6 Sol Extra High Fast" },
+  { id: "claude-fable-5-thinking-high", name: "Claude Fable 5 1M Thinking (NO ZDR)" },
+  { id: "claude-fable-5-thinking-xhigh", name: "Claude Fable 5 1M Extra High Thinking (NO ZDR)" },
+  { id: "cursor-grok-4.5-high", name: "Cursor Grok 4.5" },
+  { id: "cursor-grok-4.5-high-fast", name: "Cursor Grok 4.5 Fast" },
+  { id: "gemini-3.7-flash-high", name: "Gemini 3.7 Flash" },
+  { id: "claude-sonnet-5-thinking-high", name: "Claude Sonnet 5 1M Thinking" },
+  { id: "claude-sonnet-5-thinking-xhigh", name: "Claude Sonnet 5 1M Extra High Thinking" },
+  { id: "gpt-5.6-luna-high", name: "GPT-5.6 Luna 1M High" },
+  { id: "cursor-grok-4.6-low", name: "Cursor Grok 4.6 Low" },
+  { id: "cursor-grok-4.6-low-fast", name: "Cursor Grok 4.6 Low Fast" },
+  { id: "cursor-grok-4.6-medium", name: "Cursor Grok 4.6 Medium" },
+  { id: "cursor-grok-4.6-medium-fast", name: "Cursor Grok 4.6 Medium Fast" },
+  { id: "cursor-grok-4.6-high", name: "Cursor Grok 4.6" },
+  { id: "cursor-grok-4.6-xhigh", name: "Cursor Grok 4.6 Extra High" },
+  { id: "cursor-grok-4.6-xhigh-fast", name: "Cursor Grok 4.6 Extra High Fast" },
+  { id: "composer-2.5-fast", name: "Composer 2.5 Fast" },
+  { id: "claude-opus-5-low", name: "Claude Opus 5 1M Low" },
+  { id: "claude-opus-5-low-fast", name: "Claude Opus 5 1M Low Fast" },
+  { id: "claude-opus-5-medium", name: "Claude Opus 5 1M Medium" },
+  { id: "claude-opus-5-medium-fast", name: "Claude Opus 5 1M Medium Fast" },
+  { id: "claude-opus-5-high", name: "Claude Opus 5 1M" },
+  { id: "claude-opus-5-high-fast", name: "Claude Opus 5 1M Fast" },
+  { id: "claude-opus-5-thinking-low", name: "Claude Opus 5 1M Low Thinking" },
+  { id: "claude-opus-5-thinking-low-fast", name: "Claude Opus 5 1M Low Thinking Fast" },
+  { id: "claude-opus-5-thinking-medium", name: "Claude Opus 5 1M Medium Thinking" },
+  { id: "claude-opus-5-thinking-medium-fast", name: "Claude Opus 5 1M Medium Thinking Fast" },
+  { id: "claude-opus-5-thinking-xhigh", name: "Claude Opus 5 1M Extra High Thinking" },
+  { id: "claude-opus-5-thinking-xhigh-fast", name: "Claude Opus 5 1M Extra High Thinking Fast" },
+  { id: "claude-opus-5-thinking-max", name: "Claude Opus 5 1M Max Thinking" },
+  { id: "claude-opus-5-thinking-max-fast", name: "Claude Opus 5 1M Max Thinking Fast" },
+  { id: "claude-opus-4-8-low", name: "Claude Opus 4.8 1M Low" },
+  { id: "claude-opus-4-8-low-fast", name: "Claude Opus 4.8 1M Low Fast" },
+  { id: "claude-opus-4-8-medium", name: "Claude Opus 4.8 1M Medium" },
+  { id: "claude-opus-4-8-medium-fast", name: "Claude Opus 4.8 1M Medium Fast" },
+  { id: "claude-opus-4-8-high", name: "Claude Opus 4.8 1M" },
+  { id: "claude-opus-4-8-high-fast", name: "Claude Opus 4.8 1M Fast" },
+  { id: "claude-opus-4-8-xhigh", name: "Claude Opus 4.8 1M Extra High" },
+  { id: "claude-opus-4-8-xhigh-fast", name: "Claude Opus 4.8 1M Extra High Fast" },
+  { id: "claude-opus-4-8-max", name: "Claude Opus 4.8 1M Max" },
+  { id: "claude-opus-4-8-max-fast", name: "Claude Opus 4.8 1M Max Fast" },
+  { id: "claude-opus-4-8-thinking-low", name: "Claude Opus 4.8 1M Low Thinking" },
+  { id: "claude-opus-4-8-thinking-low-fast", name: "Claude Opus 4.8 1M Low Thinking Fast" },
+  { id: "claude-opus-4-8-thinking-medium", name: "Claude Opus 4.8 1M Medium Thinking" },
+  { id: "claude-opus-4-8-thinking-medium-fast", name: "Claude Opus 4.8 1M Medium Thinking Fast" },
+  { id: "claude-opus-4-8-thinking-high", name: "Claude Opus 4.8 1M Thinking" },
+  { id: "claude-opus-4-8-thinking-high-fast", name: "Claude Opus 4.8 1M Thinking Fast" },
+  { id: "claude-opus-4-8-thinking-xhigh", name: "Claude Opus 4.8 1M Extra High Thinking" },
+  { id: "claude-opus-4-8-thinking-xhigh-fast", name: "Claude Opus 4.8 1M Extra High Thinking Fast" },
+  { id: "claude-opus-4-8-thinking-max", name: "Claude Opus 4.8 1M Max Thinking" },
+  { id: "claude-opus-4-8-thinking-max-fast", name: "Claude Opus 4.8 1M Max Thinking Fast" },
+  { id: "gpt-5.6-sol-none", name: "GPT-5.6 Sol 1M None" },
+  { id: "gpt-5.6-sol-none-fast", name: "GPT-5.6 Sol None Fast" },
+  { id: "gpt-5.6-sol-low", name: "GPT-5.6 Sol 1M Low" },
+  { id: "gpt-5.6-sol-low-fast", name: "GPT-5.6 Sol Low Fast" },
+  { id: "gpt-5.6-sol-medium", name: "GPT-5.6 Sol 1M" },
+  { id: "gpt-5.6-sol-medium-fast", name: "GPT-5.6 Sol Fast" },
+  { id: "gpt-5.6-sol-max", name: "GPT-5.6 Sol 1M Max" },
+  { id: "gpt-5.6-sol-max-fast", name: "GPT-5.6 Sol Max Fast" },
+  { id: "gpt-5.5-none", name: "GPT-5.5 1M None" },
+  { id: "gpt-5.5-none-fast", name: "GPT-5.5 None Fast" },
+  { id: "gpt-5.5-low", name: "GPT-5.5 1M Low" },
+  { id: "gpt-5.5-low-fast", name: "GPT-5.5 Low Fast" },
+  { id: "gpt-5.5-medium", name: "GPT-5.5 1M" },
+  { id: "gpt-5.5-medium-fast", name: "GPT-5.5 Fast" },
+  { id: "gpt-5.5-high", name: "GPT-5.5 1M High" },
+  { id: "gpt-5.5-high-fast", name: "GPT-5.5 High Fast" },
+  { id: "gpt-5.5-extra-high", name: "GPT-5.5 1M Extra High" },
+  { id: "gpt-5.5-extra-high-fast", name: "GPT-5.5 Extra High Fast" },
+  { id: "claude-fable-5-low", name: "Claude Fable 5 1M Low (NO ZDR)" },
+  { id: "claude-fable-5-medium", name: "Claude Fable 5 1M Medium (NO ZDR)" },
+  { id: "claude-fable-5-high", name: "Claude Fable 5 1M (NO ZDR)" },
+  { id: "claude-fable-5-xhigh", name: "Claude Fable 5 1M Extra High (NO ZDR)" },
+  { id: "claude-fable-5-max", name: "Claude Fable 5 1M Max (NO ZDR)" },
+  { id: "claude-fable-5-thinking-low", name: "Claude Fable 5 1M Low Thinking (NO ZDR)" },
+  { id: "claude-fable-5-thinking-medium", name: "Claude Fable 5 1M Medium Thinking (NO ZDR)" },
+  { id: "claude-fable-5-thinking-max", name: "Claude Fable 5 1M Max Thinking (NO ZDR)" },
+  { id: "cursor-grok-4.5-low", name: "Cursor Grok 4.5 Low" },
+  { id: "cursor-grok-4.5-low-fast", name: "Cursor Grok 4.5 Low Fast" },
+  { id: "cursor-grok-4.5-medium", name: "Cursor Grok 4.5 Medium" },
+  { id: "cursor-grok-4.5-medium-fast", name: "Cursor Grok 4.5 Medium Fast" },
+  { id: "gemini-3.7-flash-low", name: "Gemini 3.7 Flash Low" },
+  { id: "gemini-3.7-flash-medium", name: "Gemini 3.7 Flash Medium" },
+  { id: "gpt-5.6-terra-none", name: "GPT-5.6 Terra 1M None" },
+  { id: "gpt-5.6-terra-none-fast", name: "GPT-5.6 Terra None Fast" },
+  { id: "gpt-5.6-terra-low", name: "GPT-5.6 Terra 1M Low" },
+  { id: "gpt-5.6-terra-low-fast", name: "GPT-5.6 Terra Low Fast" },
+  { id: "gpt-5.6-terra-medium", name: "GPT-5.6 Terra 1M" },
+  { id: "gpt-5.6-terra-medium-fast", name: "GPT-5.6 Terra Fast" },
+  { id: "gpt-5.6-terra-high", name: "GPT-5.6 Terra 1M High" },
+  { id: "gpt-5.6-terra-high-fast", name: "GPT-5.6 Terra High Fast" },
+  { id: "gpt-5.6-terra-xhigh", name: "GPT-5.6 Terra 1M Extra High" },
+  { id: "gpt-5.6-terra-xhigh-fast", name: "GPT-5.6 Terra Extra High Fast" },
+  { id: "gpt-5.6-terra-max", name: "GPT-5.6 Terra 1M Max" },
+  { id: "gpt-5.6-terra-max-fast", name: "GPT-5.6 Terra Max Fast" },
+  { id: "claude-sonnet-5-low", name: "Claude Sonnet 5 1M Low" },
+  { id: "claude-sonnet-5-medium", name: "Claude Sonnet 5 1M Medium" },
+  { id: "claude-sonnet-5-high", name: "Claude Sonnet 5 1M" },
+  { id: "claude-sonnet-5-xhigh", name: "Claude Sonnet 5 1M Extra High" },
+  { id: "claude-sonnet-5-max", name: "Claude Sonnet 5 1M Max" },
+  { id: "claude-sonnet-5-thinking-low", name: "Claude Sonnet 5 1M Low Thinking" },
+  { id: "claude-sonnet-5-thinking-medium", name: "Claude Sonnet 5 1M Medium Thinking" },
+  { id: "claude-sonnet-5-thinking-max", name: "Claude Sonnet 5 1M Max Thinking" },
+  { id: "claude-4.6-sonnet-medium", name: "Claude Sonnet 4.6 1M" },
+  { id: "claude-4.6-sonnet-medium-thinking", name: "Claude Sonnet 4.6 1M Thinking" },
+  { id: "claude-opus-4-7-low", name: "Claude Opus 4.7 1M Low" },
+  { id: "claude-opus-4-7-low-fast", name: "Claude Opus 4.7 1M Low Fast" },
+  { id: "claude-opus-4-7-medium", name: "Claude Opus 4.7 1M Medium" },
+  { id: "claude-opus-4-7-medium-fast", name: "Claude Opus 4.7 1M Medium Fast" },
+  { id: "claude-opus-4-7-high", name: "Claude Opus 4.7 1M High" },
+  { id: "claude-opus-4-7-high-fast", name: "Claude Opus 4.7 1M High Fast" },
+  { id: "claude-opus-4-7-xhigh", name: "Claude Opus 4.7 1M" },
+  { id: "claude-opus-4-7-xhigh-fast", name: "Claude Opus 4.7 1M Fast" },
+  { id: "claude-opus-4-7-max", name: "Claude Opus 4.7 1M Max" },
+  { id: "claude-opus-4-7-max-fast", name: "Claude Opus 4.7 1M Max Fast" },
+  { id: "claude-opus-4-7-thinking-low", name: "Claude Opus 4.7 1M Low Thinking" },
+  { id: "claude-opus-4-7-thinking-low-fast", name: "Claude Opus 4.7 1M Low Thinking Fast" },
+  { id: "claude-opus-4-7-thinking-medium", name: "Claude Opus 4.7 1M Medium Thinking" },
+  { id: "claude-opus-4-7-thinking-medium-fast", name: "Claude Opus 4.7 1M Medium Thinking Fast" },
+  { id: "claude-opus-4-7-thinking-high", name: "Claude Opus 4.7 1M High Thinking" },
+  { id: "claude-opus-4-7-thinking-high-fast", name: "Claude Opus 4.7 1M High Thinking Fast" },
+  { id: "claude-opus-4-7-thinking-xhigh", name: "Claude Opus 4.7 1M Thinking" },
+  { id: "claude-opus-4-7-thinking-xhigh-fast", name: "Claude Opus 4.7 1M Thinking Fast" },
+  { id: "claude-opus-4-7-thinking-max", name: "Claude Opus 4.7 1M Max Thinking" },
+  { id: "claude-opus-4-7-thinking-max-fast", name: "Claude Opus 4.7 1M Max Thinking Fast" },
+  { id: "gpt-5.4-low", name: "GPT-5.4 1M Low" },
+  { id: "gpt-5.4-medium", name: "GPT-5.4 1M" },
+  { id: "gpt-5.4-medium-fast", name: "GPT-5.4 Fast" },
+  { id: "gpt-5.4-high", name: "GPT-5.4 1M High" },
+  { id: "gpt-5.4-high-fast", name: "GPT-5.4 High Fast" },
+  { id: "gpt-5.4-xhigh", name: "GPT-5.4 1M Extra High" },
+  { id: "gpt-5.4-xhigh-fast", name: "GPT-5.4 Extra High Fast" },
+  { id: "claude-4.6-opus-high", name: "Claude Opus 4.6 1M" },
+  { id: "claude-4.6-opus-max", name: "Claude Opus 4.6 1M Max" },
+  { id: "claude-4.6-opus-high-thinking", name: "Claude Opus 4.6 1M Thinking" },
+  { id: "claude-4.6-opus-max-thinking", name: "Claude Opus 4.6 1M Max Thinking" },
+  { id: "claude-4.5-opus-high", name: "Claude Opus 4.5" },
+  { id: "claude-4.5-opus-high-thinking", name: "Claude Opus 4.5 Thinking" },
+  { id: "gpt-5.2-low", name: "GPT-5.2 Low" },
+  { id: "gpt-5.2-low-fast", name: "GPT-5.2 Low Fast" },
+  { id: "gpt-5.2-fast", name: "GPT-5.2 Fast" },
+  { id: "gpt-5.2-high", name: "GPT-5.2 High" },
+  { id: "gpt-5.2-high-fast", name: "GPT-5.2 High Fast" },
+  { id: "gpt-5.2-xhigh", name: "GPT-5.2 Extra High" },
+  { id: "gpt-5.2-xhigh-fast", name: "GPT-5.2 Extra High Fast" },
+  { id: "gpt-5.6-luna-none", name: "GPT-5.6 Luna 1M None" },
+  { id: "gpt-5.6-luna-none-fast", name: "GPT-5.6 Luna None Fast" },
+  { id: "gpt-5.6-luna-low", name: "GPT-5.6 Luna 1M Low" },
+  { id: "gpt-5.6-luna-low-fast", name: "GPT-5.6 Luna Low Fast" },
+  { id: "gpt-5.6-luna-medium", name: "GPT-5.6 Luna 1M" },
+  { id: "gpt-5.6-luna-medium-fast", name: "GPT-5.6 Luna Fast" },
+  { id: "gpt-5.6-luna-high-fast", name: "GPT-5.6 Luna High Fast" },
+  { id: "gpt-5.6-luna-xhigh", name: "GPT-5.6 Luna 1M Extra High" },
+  { id: "gpt-5.6-luna-xhigh-fast", name: "GPT-5.6 Luna Extra High Fast" },
+  { id: "gpt-5.6-luna-max", name: "GPT-5.6 Luna 1M Max" },
+  { id: "gpt-5.6-luna-max-fast", name: "GPT-5.6 Luna Max Fast" },
+  { id: "gemini-3.6-flash-minimal", name: "Gemini 3.6 Flash Minimal" },
+  { id: "gemini-3.6-flash-low", name: "Gemini 3.6 Flash Low" },
+  { id: "gemini-3.6-flash-medium", name: "Gemini 3.6 Flash Medium" },
+  { id: "gemini-3.6-flash-high", name: "Gemini 3.6 Flash" },
+  { id: "gemini-3.1-pro", name: "Gemini 3.1 Pro" },
+  { id: "gpt-5.4-mini-none", name: "GPT-5.4 Mini None" },
+  { id: "gpt-5.4-mini-low", name: "GPT-5.4 Mini Low" },
+  { id: "gpt-5.4-mini-medium", name: "GPT-5.4 Mini" },
+  { id: "gpt-5.4-mini-high", name: "GPT-5.4 Mini High" },
+  { id: "gpt-5.4-mini-xhigh", name: "GPT-5.4 Mini Extra High" },
+  { id: "gpt-5.4-nano-none", name: "GPT-5.4 Nano None" },
+  { id: "gpt-5.4-nano-low", name: "GPT-5.4 Nano Low" },
+  { id: "gpt-5.4-nano-medium", name: "GPT-5.4 Nano" },
+  { id: "gpt-5.4-nano-high", name: "GPT-5.4 Nano High" },
+  { id: "gpt-5.4-nano-xhigh", name: "GPT-5.4 Nano Extra High" },
+  { id: "claude-4.5-sonnet", name: "Claude Sonnet 4.5" },
+  { id: "claude-4.5-sonnet-thinking", name: "Claude Sonnet 4.5 Thinking" },
+  { id: "gpt-5.1-low", name: "GPT-5.1 Low" },
+  { id: "gpt-5.1", name: "GPT-5.1" },
+  { id: "gpt-5.1-high", name: "GPT-5.1 High" },
+  { id: "gemini-3.5-flash", name: "Gemini 3.5 Flash" },
+  { id: "claude-4-sonnet", name: "Claude Sonnet 4" },
+  { id: "claude-4-sonnet-thinking", name: "Claude Sonnet 4 Thinking" },
+  { id: "gpt-5-mini", name: "GPT-5 Mini" },
+  { id: "kimi-k3-low", name: "Kimi K3 Low" },
+  { id: "kimi-k3-high", name: "Kimi K3 High" },
+  { id: "kimi-k3-max", name: "Kimi K3" },
+  { id: "kimi-k2.7-code", name: "Kimi K2.7 Code" },
+  { id: "glm-5.2-high", name: "GLM 5.2" },
+  { id: "glm-5.2-max", name: "GLM 5.2 Max" },
+  { id: "gemini-3-flash", name: "Gemini 3 Flash" }
 ];
 var CURSOR_CONTEXT_WINDOWS = {
   "claude-fable-5": 1e6,
@@ -245,293 +259,286 @@ var CURSOR_CONTEXT_WINDOWS = {
   "kimi-k3": 2e5
 };
 
+// src/cli.ts
+import { spawn } from "node:child_process";
+import { createInterface } from "node:readline";
+function resolveAgentBinary() {
+  return process.env.CURSOR_AGENT_PATH?.trim() || process.env.AGENT_PATH?.trim() || "cursor-agent";
+}
+function buildArgs(options) {
+  const args = [
+    "--print",
+    "--output-format",
+    "stream-json",
+    // Individual text deltas instead of one accumulated snapshot per turn.
+    "--stream-partial-output",
+    "--model",
+    options.model,
+    // The host already resolved the workspace; never prompt for trust.
+    "--trust",
+    "--workspace",
+    options.cwd
+  ];
+  if (options.apiKey) args.push("--api-key", options.apiKey);
+  args.push(options.prompt);
+  return args;
+}
+function spawnAgentRun(options) {
+  const child = spawn(resolveAgentBinary(), buildArgs(options), {
+    stdio: ["ignore", "pipe", "pipe"],
+    env: process.env
+  });
+  const stderrChunks = [];
+  child.stderr?.on("data", (chunk) => {
+    stderrChunks.push(chunk.toString("utf8"));
+  });
+  const { promise: outcome, resolve: settle } = Promise.withResolvers();
+  child.on("close", (code) => {
+    settle({ code, stderr: stderrChunks.join("").trim() });
+  });
+  child.on("error", (error) => {
+    stderrChunks.push(error.message);
+    settle({ code: null, stderr: stderrChunks.join("").trim() });
+  });
+  async function* events() {
+    if (!child.stdout) return;
+    const lines = createInterface({ input: child.stdout, crlfDelay: Number.POSITIVE_INFINITY });
+    for await (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        yield JSON.parse(trimmed);
+      } catch {
+      }
+    }
+  }
+  return {
+    events: events(),
+    kill: () => {
+      child.kill("SIGTERM");
+    },
+    outcome
+  };
+}
+var runner = spawnAgentRun;
+function runAgent(options) {
+  return runner(options);
+}
+
 // src/context-windows.ts
 var DEFAULT_CONTEXT_WINDOW = 2e5;
-var CURSOR_CONTEXT_WINDOWS2 = CURSOR_CONTEXT_WINDOWS;
-function lookupCursorContextWindow(catalogId) {
-  return CURSOR_CONTEXT_WINDOWS2[catalogId] ?? DEFAULT_CONTEXT_WINDOW;
-}
-
-// src/sdk.ts
-async function loadCursorSdk() {
-  return import("@cursor/sdk");
-}
 
 // src/models.ts
-var CURSOR_SDK_BASE_URL = "https://cursor.com";
+var CURSOR_CLI_BASE_URL = "https://cursor.com";
 var ZERO_COST = Object.freeze({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
-var TEXT_AND_IMAGE = ["text", "image"];
-var EFFORT_ORDER = ["minimal", "low", "medium", "high", "xhigh", "max"];
-var KNOWN_EFFORT = {
-  minimal: true,
-  low: true,
-  medium: true,
-  high: true,
-  xhigh: true,
-  max: true
-};
-var selectionIdByOmpId = {};
+var TEXT_ONLY = ["text"];
+var MODELS_TIMEOUT_MS = 2e4;
+var REASONING_SUFFIX = /(?:thinking|none|minimal|low|medium|high|xhigh|max)(?:-fast)?$/;
+function inferReasoning(id) {
+  return REASONING_SUFFIX.test(id);
+}
+function contextWindowFor(id) {
+  let best = 0;
+  let window = DEFAULT_CONTEXT_WINDOW;
+  for (const [family, size] of Object.entries(CURSOR_CONTEXT_WINDOWS)) {
+    if (!id.startsWith(family) || family.length <= best) continue;
+    best = family.length;
+    window = size;
+  }
+  return window;
+}
+function parseAgentModels(output) {
+  const models = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const raw of output.split("\n")) {
+    const line = raw.trim();
+    const match = /^([A-Za-z0-9._@/:-]+) - (.+)$/.exec(line);
+    if (!match) continue;
+    const id = match[1];
+    if (id.endsWith(":")) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    models.push({ id, name: match[2].replace(/\s*\(current, default\)$/, "").trim() });
+  }
+  return models;
+}
 function toProviderModels(items) {
   return items.map((item) => {
-    const thinking = thinkingFromItem(item);
-    const ompId = item.id.replace(/(\d)\.(\d)/g, "$1-$2");
-    const contextWindow = contextWindowFromItem(item);
-    selectionIdByOmpId[ompId] = item.id;
+    const contextWindow = contextWindowFor(item.id);
     return {
-      id: ompId,
-      name: item.displayName || item.id,
-      reasoning: thinking !== void 0,
-      ...thinking ? { thinking } : {},
-      input: [...TEXT_AND_IMAGE],
+      id: item.id,
+      name: item.name || item.id,
+      reasoning: inferReasoning(item.id),
+      input: [...TEXT_ONLY],
       cost: { ...ZERO_COST },
       contextWindow,
       maxTokens: contextWindow
     };
   });
 }
-var bootstrapCursorModels = toProviderModels(FALLBACK_CATALOG_ITEMS);
-function cursorSelectionId(ompId) {
-  return selectionIdByOmpId[ompId] ?? ompId;
-}
-function getParameter(item, id) {
-  return item.parameters?.find((parameter) => parameter.id === id);
-}
-function parseContextWindow(value) {
-  const match = /^(\d+(?:\.\d+)?)([km])$/i.exec(value.trim());
-  if (!match) return void 0;
-  const amount = Number(match[1]);
-  const unit = match[2]?.toLowerCase();
-  if (!Number.isFinite(amount)) return void 0;
-  return Math.round(amount * (unit === "m" ? 1e6 : 1e3));
-}
-function contextWindowFromItem(item) {
-  const values = getParameter(item, "context")?.values ?? [];
-  let largest = 0;
-  for (const entry of values) {
-    const parsed = parseContextWindow(entry.value);
-    if (parsed !== void 0 && parsed > largest) largest = parsed;
-  }
-  return largest > 0 ? largest : lookupCursorContextWindow(item.id);
-}
-function thinkingFromItem(item) {
-  const effort = getParameter(item, "effort") ?? getParameter(item, "reasoning");
-  if (!effort) return void 0;
-  const values = effort.values.map((entry) => entry.value.toLowerCase() === "extra-high" ? "xhigh" : entry.value.toLowerCase()).filter((value) => KNOWN_EFFORT[value]);
-  const ordered = EFFORT_ORDER.filter((level) => values.includes(level));
-  if (ordered.length === 0) return void 0;
-  return {
-    mode: "effort",
-    efforts: ordered
-  };
-}
-function mapCursorModels(items) {
-  if (items.length === 0) return bootstrapCursorModels;
-  return toProviderModels(items);
-}
-async function fetchCursorModels(apiKey) {
-  const key = resolveCursorApiKey(apiKey);
-  if (!key) return bootstrapCursorModels;
-  try {
-    const sdk = await loadCursorSdk();
-    return mapCursorModels(await sdk.Cursor.models.list({ apiKey: key }));
-  } catch {
-    return bootstrapCursorModels;
-  }
+var bootstrapCursorModels = toProviderModels(FALLBACK_CLI_MODELS);
+async function fetchCursorModels() {
+  const { spawn: spawn2 } = await import("node:child_process");
+  const { promise, resolve } = Promise.withResolvers();
+  const child = spawn2(resolveAgentBinary(), ["models"], { stdio: ["ignore", "pipe", "pipe"] });
+  const chunks = [];
+  const timer = setTimeout(() => {
+    child.kill("SIGTERM");
+    resolve(bootstrapCursorModels);
+  }, MODELS_TIMEOUT_MS);
+  child.stdout?.on("data", (chunk) => {
+    chunks.push(chunk.toString("utf8"));
+  });
+  child.on("error", () => {
+    clearTimeout(timer);
+    resolve(bootstrapCursorModels);
+  });
+  child.on("close", () => {
+    clearTimeout(timer);
+    const parsed = parseAgentModels(chunks.join(""));
+    resolve(parsed.length > 0 ? toProviderModels(parsed) : bootstrapCursorModels);
+  });
+  return promise;
 }
 
 // src/stream.ts
-import { createAssistantMessageEventStream, resolveApiKeyOnce } from "@oh-my-pi/pi-ai";
+import { createAssistantMessageEventStream } from "@oh-my-pi/pi-ai";
 
 // src/prompt.ts
-function textOf(content) {
-  if (typeof content === "string") return content;
-  return content.filter((part) => part.type === "text" && typeof part.text === "string").map((part) => part.text).join("");
+function partToText(part) {
+  if (part.type === "text" && typeof part.text === "string") return part.text;
+  if (part.type === "image") {
+    return `[image omitted: ${part.mimeType ?? "unknown type"} \u2014 the Cursor CLI cannot receive attachments]`;
+  }
+  return "";
 }
-function latestUser(messages) {
-  for (let index = messages.length - 1; index >= 0; index--) {
-    const message = messages[index];
-    if (message.role === "user") return message;
+function contentToText(content) {
+  if (typeof content === "string") return content;
+  return content.map(partToText).filter((text) => text.length > 0).join("\n");
+}
+function toolCallsOf(content) {
+  if (typeof content === "string") return [];
+  return content.filter((part) => part.type === "toolCall");
+}
+function renderAssistant(content, lines) {
+  const text = contentToText(content);
+  if (text.trim().length > 0) lines.push(`[Assistant]
+${text}`);
+  for (const call of toolCallsOf(content)) {
+    const args = JSON.stringify(call.arguments ?? {});
+    lines.push(`[Tool call: ${call.name ?? "unknown"} id=${call.id ?? "?"}]
+${args}`);
+  }
+}
+function renderToolResult(message, lines) {
+  const body = contentToText(message.content);
+  const status = message.isError ? " (failed)" : "";
+  lines.push(`[Tool result: ${message.toolName ?? "unknown"} id=${message.toolCallId ?? "?"}${status}]
+${body}`);
+}
+function endsWithToolResults(messages) {
+  return messages.at(-1)?.role === "toolResult";
+}
+function buildCursorPrompt(context) {
+  const lines = [];
+  if (context.systemPrompt?.length) {
+    lines.push(`[System]
+${context.systemPrompt.join("\n")}`);
+  }
+  for (const message of context.messages) {
+    if (message.role === "user") {
+      lines.push(`[User]
+${contentToText(message.content)}`);
+      continue;
+    }
+    if (message.role === "assistant") {
+      renderAssistant(message.content, lines);
+      continue;
+    }
+    if (message.role === "toolResult") {
+      renderToolResult(message, lines);
+    }
+  }
+  if (endsWithToolResults(context.messages)) {
+    lines.push(
+      "[Host]\nThe tool calls above already ran on the host and their results are shown. Continue from that state; never repeat a completed call. When you need another tool, call it normally \u2014 the host executes it and returns the result the same way."
+    );
+  }
+  return lines.join("\n\n");
+}
+
+// src/tool-map.ts
+function cliToolLabel(cliKey) {
+  const stripped = cliKey.replace(/ToolCall$/, "");
+  return stripped.charAt(0).toUpperCase() + stripped.slice(1);
+}
+function firstString(args, keys) {
+  for (const key of keys) {
+    const value = args[key];
+    if (typeof value === "string" && value.length > 0) return value;
   }
   return void 0;
 }
-function imagesOf(content) {
-  if (typeof content === "string") return [];
-  const images = [];
-  for (const part of content) {
-    if (part.type !== "image") continue;
-    const image = part;
-    images.push({ data: image.data, mimeType: image.mimeType });
-  }
-  return images;
+function editCommand(path, oldString, newString) {
+  const encode = (value) => Buffer.from(value, "utf8").toString("base64");
+  const script = [
+    'const fs=require("fs");',
+    'const [p,o,n]=process.argv.slice(1).map((s)=>Buffer.from(s,"base64").toString("utf8"));',
+    'const s=fs.readFileSync(p,"utf8");',
+    "const hits=s.split(o).length-1;",
+    'if(hits!==1){console.error("edit: expected exactly 1 match, found "+hits);process.exit(1);}',
+    "fs.writeFileSync(p,s.replace(o,n));",
+    'console.log("edited "+p);'
+  ].join("");
+  return `node -e '${script}' ${encode(path)} ${encode(oldString)} ${encode(newString)}`;
 }
-function buildCursorPrompt(context) {
-  const user = latestUser(context.messages);
-  const latest = user ? textOf(user.content) : "Continue.";
-  const history = [];
-  if (context.systemPrompt?.length) history.push(context.systemPrompt.join("\n"));
-  for (const message of context.messages) {
-    if (message === user) continue;
-    if (message.role === "user") history.push(`User: ${textOf(message.content)}`);
-    if (message.role === "assistant") history.push(`Assistant: ${textOf(message.content)}`);
-  }
-  const text = history.length > 0 ? `${history.join("\n\n")}
-
-User: ${latest}` : latest;
-  const images = user ? imagesOf(user.content) : [];
-  return images.length > 0 ? { text, images } : { text };
-}
-
-// src/tools.ts
-import { toolWireSchema } from "@oh-my-pi/pi-ai";
-var CURSOR_SDK_SESSION_PREFIX = "cursor-sdk:";
-var CursorSdkLiveRun = class {
-  pending = /* @__PURE__ */ new Map();
-  agent;
-  run;
-  stream;
-  partial;
-  failureMessage;
-  /** True once the SDK run generator can no longer produce events. */
-  finished = false;
-  /** Tool calls emitted after their segment's stream ended; replayed on reattach. */
-  deferredCalls = [];
-  /** Liveness hook armed by the stream layer's stall watchdog for the active segment. */
-  onActivity;
-  /** Report liveness so a segment with flowing SDK events outlives the silence deadline. */
-  touch() {
-    this.onActivity?.();
-  }
-  #segment;
-  #streamOpen = false;
-  #closed = false;
-  waitSegment() {
-    const { promise, resolve } = Promise.withResolvers();
-    this.#segment = resolve;
-    return promise;
-  }
-  endSegment(reason) {
-    const resolve = this.#segment;
-    this.#segment = void 0;
-    resolve?.(reason);
-  }
-  attach(stream, partial) {
-    this.stream = stream;
-    this.partial = partial;
-    this.#streamOpen = true;
-    this.touch();
-    const deferred = this.deferredCalls;
-    this.deferredCalls = [];
-    for (const toolCall of deferred) this.emitToolCall(toolCall);
-  }
-  /** True once closed or failed; a dead run cannot serve further turns. */
-  get isDead() {
-    return this.#closed || this.failureMessage !== void 0;
-  }
-  /** Called by the stream layer whenever the attached segment stream terminates. */
-  markStreamEnded() {
-    this.#streamOpen = false;
-  }
-  /**
-   * Emit a tool call to the consumer. When the segment's stream has already
-   * ended, the call is held and replayed onto the next attached stream so the
-   * host still sees it and can execute it.
-   */
-  emitToolCall(toolCall) {
-    if (this.#closed) return;
-    const stream = this.stream;
-    const partial = this.partial;
-    if (!this.#streamOpen || !stream || !partial) {
-      this.deferredCalls.push(toolCall);
-      return;
+function mapCliToolCall(cliKey, args, available) {
+  const offer = (name, mapped) => available.has(name) ? { name, args: mapped } : void 0;
+  switch (cliKey) {
+    case "readToolCall": {
+      const path = firstString(args, ["path", "target_file", "file"]);
+      return path ? offer("read", { path, i: "Reading file" }) : void 0;
     }
-    partial.content.push(toolCall);
-    const index = partial.content.length - 1;
-    const delta = JSON.stringify(toolCall.arguments);
-    stream.push({ type: "toolcall_start", contentIndex: index, partial });
-    stream.push({ type: "toolcall_delta", contentIndex: index, delta, partial });
-    stream.push({ type: "toolcall_end", contentIndex: index, toolCall, partial });
+    case "lsToolCall": {
+      const path = firstString(args, ["path", "directory", "target_directory"]);
+      return path ? offer("read", { path, i: "Listing directory" }) : void 0;
+    }
+    case "writeToolCall": {
+      const path = firstString(args, ["path", "target_file", "file"]);
+      const content = firstString(args, ["contents", "content", "text", "newString"]) ?? "";
+      return path ? offer("write", { path, content, i: "Writing file" }) : void 0;
+    }
+    case "editToolCall": {
+      const path = firstString(args, ["path", "target_file", "file"]);
+      const oldString = firstString(args, ["oldString", "old_string", "old"]);
+      const newString = firstString(args, ["newString", "new_string", "new"]) ?? "";
+      if (!path || !oldString) return void 0;
+      return offer("bash", { command: editCommand(path, oldString, newString), i: "Applying edit" });
+    }
+    case "deleteToolCall": {
+      const path = firstString(args, ["path", "target_file", "file"]);
+      return path ? offer("bash", { command: `rm -rf -- ${JSON.stringify(path)}`, i: "Deleting path" }) : void 0;
+    }
+    case "shellToolCall": {
+      const command = firstString(args, ["command", "cmd", "shellCommand"]);
+      return command ? offer("bash", { command, i: "Running command" }) : void 0;
+    }
+    case "grepToolCall": {
+      const pattern = firstString(args, ["pattern", "query", "regex"]);
+      if (!pattern) return void 0;
+      const path = firstString(args, ["path", "directory", "includePattern"]);
+      return offer("grep", path ? { pattern, path, i: "Searching" } : { pattern, i: "Searching" });
+    }
+    case "globToolCall": {
+      const pattern = firstString(args, ["globPattern", "pattern", "glob", "path"]);
+      return pattern ? offer("glob", { path: pattern, i: "Globbing paths" }) : void 0;
+    }
+    default:
+      return void 0;
   }
-  /** Stall detection: fail the waiting segment so callers get an error, not silence. */
-  fail(message) {
-    if (this.#closed) return;
-    this.failureMessage = message;
-    void this.run?.cancel();
-    this.endSegment("error");
-  }
-  close() {
-    if (this.#closed) return;
-    this.#closed = true;
-    this.#streamOpen = false;
-    for (const waiting of this.pending.values()) waiting.reject(new Error("closed"));
-    this.pending.clear();
-    void this.run?.cancel();
-    this.agent?.close();
-    this.endSegment("aborted");
-  }
-};
-function liveRunKey(sessionId) {
-  return `${CURSOR_SDK_SESSION_PREFIX}${sessionId ?? "anon"}`;
-}
-function getLiveRun(options) {
-  return options.providerSessionState?.get(liveRunKey(options.sessionId));
-}
-function putLiveRun(options, live) {
-  options.providerSessionState?.set(liveRunKey(options.sessionId), live);
-}
-function deleteLiveRun(options) {
-  options.providerSessionState?.delete(liveRunKey(options.sessionId));
-}
-function trailingToolResults(context) {
-  const results = [];
-  for (let index = context.messages.length - 1; index >= 0; index--) {
-    const message = context.messages[index];
-    if (message.role !== "toolResult") break;
-    results.unshift(message);
-  }
-  return results;
-}
-function shouldResumeLiveRun(context, live) {
-  if (!live || live.pending.size === 0) return false;
-  return trailingToolResults(context).some((result) => live.pending.has(result.toolCallId));
-}
-function resumeLiveRun(context, live) {
-  for (const result of trailingToolResults(context)) {
-    const waiting = live.pending.get(result.toolCallId);
-    if (!waiting) continue;
-    live.pending.delete(result.toolCallId);
-    const text = result.content.filter((part) => part.type === "text").map((part) => part.text).join("");
-    waiting.resolve(result.isError ? `Error: ${text}` : text);
-  }
-}
-function buildCustomTools(tools, live) {
-  const custom = {};
-  if (!tools) return custom;
-  for (const tool of tools) {
-    custom[tool.name] = {
-      description: tool.description,
-      inputSchema: toolWireSchema(tool),
-      execute: (args, executeContext) => {
-        const { promise, resolve, reject } = Promise.withResolvers();
-        const id = executeContext.toolCallId ?? `call-${tool.name}-${live.pending.size + 1}`;
-        const toolCall = {
-          type: "toolCall",
-          id,
-          name: tool.name,
-          arguments: args
-        };
-        live.pending.set(id, { resolve, reject });
-        live.touch();
-        live.emitToolCall(toolCall);
-        live.endSegment("toolUse");
-        return promise;
-      }
-    };
-  }
-  return custom;
 }
 
 // src/stream.ts
-var MISSING_KEY = "Cursor SDK API key is not configured. Set CURSOR_API_KEY or pass --api-key.";
 function emptyUsage() {
   return {
     input: 0,
@@ -555,249 +562,174 @@ function makeMessage(model, stopReason, errorMessage) {
     ...errorMessage ? { errorMessage } : {}
   };
 }
-function appendText(partial, text) {
-  const last = partial.content.at(-1);
-  if (last?.type === "text") {
-    last.text += text;
-    return partial.content.length - 1;
+var BlockWriter = class {
+  constructor(stream, partial, kind) {
+    this.stream = stream;
+    this.partial = partial;
+    this.kind = kind;
   }
-  partial.content.push({ type: "text", text });
-  return partial.content.length - 1;
-}
-function appendThinking(partial, text) {
-  const last = partial.content.at(-1);
-  if (last?.type === "thinking") {
-    last.thinking += text;
-    return partial.content.length - 1;
-  }
-  partial.content.push({ type: "thinking", thinking: text });
-  return partial.content.length - 1;
-}
-var DEFAULT_STALL_TIMEOUT_MS = 3e5;
-var stallTimeoutMs = DEFAULT_STALL_TIMEOUT_MS;
-function armStallWatchdog(live, phase) {
-  let lastActivity = Date.now();
-  const touch = () => {
-    lastActivity = Date.now();
-  };
-  live.onActivity = touch;
-  const timer = setInterval(
-    () => {
-      const idleMs = Date.now() - lastActivity;
-      if (idleMs < stallTimeoutMs) return;
-      clearInterval(timer);
-      live.fail(`Cursor SDK stall: no events for ${Math.round(idleMs / 1e3)}s while ${phase}`);
-    },
-    Math.max(15, Math.min(1e3, Math.floor(stallTimeoutMs / 4)))
-  );
-  return {
-    touch,
-    disarm: () => {
-      clearInterval(timer);
-      if (live.onActivity === touch) live.onActivity = void 0;
+  #index = -1;
+  #emitted = "";
+  /** Emit whatever part of `incoming` the consumer has not seen yet. */
+  write(incoming) {
+    if (!incoming) return;
+    let delta = incoming;
+    if (this.#emitted.length > 0) {
+      if (incoming.startsWith(this.#emitted)) {
+        delta = incoming.slice(this.#emitted.length);
+        this.#emitted = incoming;
+      } else if (this.#emitted.startsWith(incoming)) {
+        return;
+      } else {
+        this.#emitted += incoming;
+      }
+    } else {
+      this.#emitted = incoming;
     }
-  };
-}
-function bindAbortSignal(live, options) {
-  const signal = options?.signal;
-  if (!signal) return void 0;
-  const onAbort = () => {
-    live.close();
-  };
-  signal.addEventListener("abort", onAbort, { once: true });
-  return () => {
-    signal.removeEventListener("abort", onAbort);
-  };
-}
-async function resumeTurn(model, context, stream, partial, existing, options) {
-  if (existing.isDead || existing.finished) {
-    deleteLiveRun(options ?? {});
-    existing.close();
-    const reason = existing.failureMessage ?? "Cursor run ended before its tool results arrived";
-    finish(stream, makeMessage(model, "error", reason), "error");
-    return;
-  }
-  existing.attach(stream, partial);
-  const watchdog = armStallWatchdog(existing, "resuming after tool results");
-  const removeAbort = bindAbortSignal(existing, options);
-  try {
-    const next = existing.waitSegment();
-    resumeLiveRun(context, existing);
-    await settleSegment(model, stream, partial, existing, options, await next);
-  } catch (error) {
-    await settleSegment(model, stream, partial, existing, options, classifyError(options, error));
-  } finally {
-    watchdog.disarm();
-    removeAbort?.();
-  }
-}
-async function freshTurn(model, context, stream, partial, options) {
-  const live = new CursorSdkLiveRun();
-  live.attach(stream, partial);
-  if (options?.providerSessionState) putLiveRun(options, live);
-  const watchdog = armStallWatchdog(live, "starting the run");
-  const removeAbort = bindAbortSignal(live, options);
-  try {
-    const rawKey = await resolveApiKeyOnce(options?.apiKey, options?.signal);
-    watchdog.touch();
-    const apiKey = resolveCursorApiKey(rawKey);
-    if (!apiKey) {
-      deleteLiveRun(options ?? {});
-      finish(stream, makeMessage(model, "error", MISSING_KEY), "error");
-      return;
-    }
-    if (options?.signal?.aborted) throw new Error("aborted");
-    const sdk = await loadCursorSdk();
-    watchdog.touch();
-    const cwd = options?.cwd ?? process.cwd();
-    const selectionId = cursorSelectionId(model.id);
-    const agent = await sdk.Agent.create({
-      apiKey,
-      model: { id: selectionId },
-      tools: ["mcp"],
-      local: { cwd, customTools: buildCustomTools(context.tools, live) }
-    });
-    watchdog.touch();
-    live.agent = agent;
-    if (live.isDead) throw new Error(live.failureMessage ?? "aborted");
-    const next = live.waitSegment();
-    const sendPromise = agent.send(buildCursorPrompt(context), {
-      model: { id: selectionId },
-      onStep: () => live.touch()
-    });
-    const interrupted = await Promise.race([sendPromise.then(() => null), next]);
-    if (interrupted !== null) {
-      void sendPromise.then((run2) => {
-        live.run = run2;
-        return run2.cancel();
-      }).catch(() => {
+    if (!delta) return;
+    if (this.#index < 0) {
+      if (this.kind === "text") {
+        this.partial.content.push({ type: "text", text: "" });
+      } else {
+        this.partial.content.push({ type: "thinking", thinking: "" });
+      }
+      this.#index = this.partial.content.length - 1;
+      this.stream.push({
+        type: this.kind === "text" ? "text_start" : "thinking_start",
+        contentIndex: this.#index,
+        partial: this.partial
       });
-      await settleSegment(model, stream, partial, live, options, interrupted);
-      return;
     }
-    const run = await sendPromise;
-    watchdog.touch();
-    live.run = run;
-    void consumeRun(live, stream, partial, run);
-    await settleSegment(model, stream, partial, live, options, await next);
-  } catch (error) {
-    await settleSegment(model, stream, partial, live, options, classifyError(options, error));
-  } finally {
-    watchdog.disarm();
-    removeAbort?.();
+    const block = this.partial.content[this.#index];
+    if (this.kind === "text" && block?.type === "text") block.text += delta;
+    if (this.kind === "thinking" && block?.type === "thinking") block.thinking += delta;
+    this.stream.push({
+      type: this.kind === "text" ? "text_delta" : "thinking_delta",
+      contentIndex: this.#index,
+      delta,
+      partial: this.partial
+    });
   }
+};
+function applyUsage(partial, event) {
+  const usage = event.usage;
+  if (!usage) return;
+  partial.usage.input = usage.inputTokens ?? 0;
+  partial.usage.output = usage.outputTokens ?? 0;
+  partial.usage.cacheRead = usage.cacheReadTokens ?? 0;
+  partial.usage.cacheWrite = usage.cacheWriteTokens ?? 0;
+  partial.usage.totalTokens = partial.usage.input + partial.usage.output + partial.usage.cacheRead + partial.usage.cacheWrite;
+}
+function firstToolEntry(event) {
+  const call = event.tool_call;
+  if (!call) return void 0;
+  for (const [cliKey, payload] of Object.entries(call)) {
+    if (!cliKey.endsWith("ToolCall")) continue;
+    return { cliKey, args: payload?.args ?? {} };
+  }
+  return void 0;
 }
 function streamCursor(model, context, options) {
   const stream = createAssistantMessageEventStream();
   const partial = makeMessage(model, "stop");
   void (async () => {
     stream.push({ type: "start", partial });
-    const existing = getLiveRun(options ?? {});
-    if (existing && shouldResumeLiveRun(context, existing)) {
-      await resumeTurn(model, context, stream, partial, existing, options);
+    const run = runAgent({
+      prompt: buildCursorPrompt(context),
+      model: model.id,
+      cwd: options?.cwd ?? process.cwd(),
+      apiKey: resolveCursorApiKey(typeof options?.apiKey === "string" ? options.apiKey : void 0)
+    });
+    const onAbort = () => {
+      run.kill();
+    };
+    options?.signal?.addEventListener("abort", onAbort, { once: true });
+    const offered = new Set((context.tools ?? []).map((tool) => tool.name));
+    const text = new BlockWriter(stream, partial, "text");
+    const thinking = new BlockWriter(stream, partial, "thinking");
+    let handedOver;
+    try {
+      for await (const event of run.events) {
+        if (event.type === "thinking") {
+          thinking.write(event.text ?? "");
+          continue;
+        }
+        if (event.type === "assistant") {
+          for (const block of event.message?.content ?? []) {
+            if (block.type === "text") text.write(block.text ?? "");
+          }
+          continue;
+        }
+        if (event.type === "tool_call" && event.subtype === "started") {
+          const entry = firstToolEntry(event);
+          if (!entry) continue;
+          const mapped = mapCliToolCall(entry.cliKey, entry.args, offered);
+          if (!mapped) {
+            text.write(`
+[${cliToolLabel(entry.cliKey)} ran inside Cursor]
+`);
+            continue;
+          }
+          run.kill();
+          handedOver = {
+            type: "toolCall",
+            id: event.call_id ?? `cursor-${Date.now()}`,
+            name: mapped.name,
+            arguments: mapped.args
+          };
+          partial.content.push(handedOver);
+          const index = partial.content.length - 1;
+          stream.push({ type: "toolcall_start", contentIndex: index, partial });
+          stream.push({ type: "toolcall_delta", contentIndex: index, delta: JSON.stringify(mapped.args), partial });
+          stream.push({ type: "toolcall_end", contentIndex: index, toolCall: handedOver, partial });
+          break;
+        }
+        if (event.type === "result") {
+          applyUsage(partial, event);
+          break;
+        }
+      }
+    } finally {
+      options?.signal?.removeEventListener("abort", onAbort);
+    }
+    const { code, stderr } = await run.outcome;
+    if (options?.signal?.aborted) {
+      const message = makeMessage(model, "aborted", "aborted");
+      stream.push({ type: "error", reason: "aborted", error: message });
+      stream.end(message);
       return;
     }
-    existing?.close();
-    deleteLiveRun(options ?? {});
-    await freshTurn(model, context, stream, partial, options);
+    if (handedOver) {
+      partial.stopReason = "toolUse";
+      stream.push({ type: "done", reason: "toolUse", message: partial });
+      stream.end(partial);
+      return;
+    }
+    const producedOutput = partial.content.some(
+      (block) => block.type === "text" && block.text.length > 0 || block.type === "thinking"
+    );
+    if (!producedOutput && code !== 0) {
+      const message = makeMessage(model, "error", stderr || `Cursor CLI exited with code ${code}`);
+      stream.push({ type: "error", reason: "error", error: message });
+      stream.end(message);
+      return;
+    }
+    partial.stopReason = "stop";
+    stream.push({ type: "done", reason: "stop", message: partial });
+    stream.end(partial);
   })().catch((error) => {
-    const message = error instanceof Error ? error.message : String(error);
-    finish(stream, makeMessage(model, "error", message), "error");
+    const detail = error instanceof Error ? error.message : String(error);
+    const message = makeMessage(model, "error", detail);
+    stream.push({ type: "error", reason: "error", error: message });
+    stream.end(message);
   });
   return stream;
 }
-async function consumeRun(live, stream, fallback, run) {
-  try {
-    for await (const event of run.stream()) {
-      live.touch();
-      const target = live.partial ?? fallback;
-      const out = live.stream ?? stream;
-      const terminal = applySdkEvent(out, target, live, event);
-      if (terminal) {
-        live.finished = true;
-        live.endSegment(terminal);
-        return;
-      }
-    }
-    live.finished = true;
-    live.endSegment("stop");
-  } catch (error) {
-    live.finished = true;
-    live.endSegment(error instanceof Error && error.message === "aborted" ? "aborted" : "error");
-  }
-}
-async function settleSegment(model, stream, partial, live, options, reason) {
-  if (reason === "toolUse") {
-    if (!options?.providerSessionState) {
-      live.close();
-      finish(stream, makeMessage(model, "error", "providerSessionState is required for Cursor SDK tools"), "error");
-      return;
-    }
-    partial.stopReason = "toolUse";
-    stream.push({ type: "done", reason: "toolUse", message: partial });
-    stream.end(partial);
-    live.markStreamEnded();
-    return;
-  }
-  deleteLiveRun(options ?? {});
-  if (reason === "aborted" || options?.signal?.aborted) {
-    live.close();
-    finish(stream, makeMessage(model, "aborted", "aborted"), "aborted");
-    return;
-  }
-  if (reason === "error") {
-    live.close();
-    finish(stream, makeMessage(model, "error", live.failureMessage ?? "Cursor SDK run failed"), "error");
-    return;
-  }
-  live.close();
-  partial.stopReason = "stop";
-  stream.push({ type: "done", reason: "stop", message: partial });
-  stream.end(partial);
-  live.markStreamEnded();
-}
-function classifyError(options, error) {
-  if (options?.signal?.aborted || error instanceof Error && error.message === "aborted") return "aborted";
-  return "error";
-}
-function finish(stream, message, reason) {
-  stream.push({ type: "error", reason, error: message });
-  stream.end(message);
-}
-function applySdkEvent(stream, partial, live, event) {
-  if (event.type === "status") {
-    if (event.status === "ERROR") {
-      live.failureMessage = event.message ?? "Cursor SDK run failed";
-      return "error";
-    }
-    if (event.status === "CANCELLED") return "aborted";
-    return void 0;
-  }
-  if (event.type === "thinking" && event.text) {
-    const index = appendThinking(partial, event.text);
-    if (partial.content[index]?.type === "thinking" && partial.content[index].thinking === event.text) {
-      stream.push({ type: "thinking_start", contentIndex: index, partial });
-    }
-    stream.push({ type: "thinking_delta", contentIndex: index, delta: event.text, partial });
-    return void 0;
-  }
-  if (event.type === "assistant") {
-    for (const block of event.message.content) {
-      if (block.type !== "text" || !block.text) continue;
-      const index = appendText(partial, block.text);
-      if (partial.content[index].text === block.text) {
-        stream.push({ type: "text_start", contentIndex: index, partial });
-      }
-      stream.push({ type: "text_delta", contentIndex: index, delta: block.text, partial });
-    }
-  }
-  return void 0;
-}
 
 // src/index.ts
-function cursorSdkProvider(models) {
+function cursorCliProvider(models) {
   return {
-    baseUrl: CURSOR_SDK_BASE_URL,
+    baseUrl: CURSOR_CLI_BASE_URL,
     api: "cursor-sdk",
     apiKey: CURSOR_API_KEY_CONFIG_VALUE,
     models,
@@ -805,27 +737,14 @@ function cursorSdkProvider(models) {
   };
 }
 function index_default(pi) {
-  pi.registerProvider("cursor-sdk", cursorSdkProvider(bootstrapCursorModels));
+  pi.registerProvider("cursor-sdk", cursorCliProvider(bootstrapCursorModels));
   pi.registerCommand("update-catalog", {
-    description: "Update the Cursor model catalog from Cursor.models.list",
+    description: "Refresh the Cursor model catalog from `cursor-agent models`",
     handler: async (_args, ctx) => {
-      const raw = await ctx.modelRegistry.getApiKeyForProvider("cursor-sdk");
-      const apiKey = resolveCursorApiKey(raw);
-      if (!apiKey) {
-        ctx.ui.notify("Cursor SDK: set CURSOR_API_KEY or pass --api-key", "warning");
-        return;
-      }
-      try {
-        const sdk = await loadCursorSdk();
-        const listed = await sdk.Cursor.models.list({ apiKey });
-        const models = mapCursorModels(listed);
-        ctx.modelRegistry.registerProvider("cursor-sdk", cursorSdkProvider(models));
-        if (!ctx.hasUI) return;
-        ctx.ui.notify(`Cursor SDK catalog updated with ${models.length} models.`, "info");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        ctx.ui.notify(`Cursor SDK catalog update failed: ${message}`, "error");
-      }
+      const models = await fetchCursorModels();
+      ctx.modelRegistry.registerProvider("cursor-sdk", cursorCliProvider(models));
+      if (!ctx.hasUI) return;
+      ctx.ui.notify(`Cursor CLI catalog updated with ${models.length} models.`, "info");
     }
   });
 }
@@ -833,7 +752,8 @@ export {
   bootstrapCursorModels,
   index_default as default,
   fetchCursorModels,
-  mapCursorModels,
+  parseAgentModels,
   resolveCursorApiKey,
-  streamCursor
+  streamCursor,
+  toProviderModels
 };

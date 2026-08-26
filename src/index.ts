@@ -1,16 +1,15 @@
 import type { ExtensionAPI, ProviderConfig, ProviderModelConfig } from "@oh-my-pi/pi-coding-agent";
-import { CURSOR_API_KEY_CONFIG_VALUE, resolveCursorApiKey } from "./api-key.js";
-import { bootstrapCursorModels, CURSOR_SDK_BASE_URL, mapCursorModels } from "./models.js";
-import { loadCursorSdk } from "./sdk.js";
+import { CURSOR_API_KEY_CONFIG_VALUE } from "./api-key.js";
+import { bootstrapCursorModels, CURSOR_CLI_BASE_URL, fetchCursorModels } from "./models.js";
 import { streamCursor } from "./stream.js";
 
 export { resolveCursorApiKey } from "./api-key.js";
-export { bootstrapCursorModels, fetchCursorModels, mapCursorModels } from "./models.js";
+export { bootstrapCursorModels, fetchCursorModels, parseAgentModels, toProviderModels } from "./models.js";
 export { streamCursor } from "./stream.js";
 
-function cursorSdkProvider(models: ProviderModelConfig[]): ProviderConfig {
+function cursorCliProvider(models: ProviderModelConfig[]): ProviderConfig {
   return {
-    baseUrl: CURSOR_SDK_BASE_URL,
+    baseUrl: CURSOR_CLI_BASE_URL,
     api: "cursor-sdk",
     apiKey: CURSOR_API_KEY_CONFIG_VALUE,
     models,
@@ -19,27 +18,14 @@ function cursorSdkProvider(models: ProviderModelConfig[]): ProviderConfig {
 }
 
 export default function (pi: ExtensionAPI) {
-  pi.registerProvider("cursor-sdk", cursorSdkProvider(bootstrapCursorModels));
+  pi.registerProvider("cursor-sdk", cursorCliProvider(bootstrapCursorModels));
   pi.registerCommand("update-catalog", {
-    description: "Update the Cursor model catalog from Cursor.models.list",
+    description: "Refresh the Cursor model catalog from `cursor-agent models`",
     handler: async (_args, ctx) => {
-      const raw = await ctx.modelRegistry.getApiKeyForProvider("cursor-sdk");
-      const apiKey = resolveCursorApiKey(raw);
-      if (!apiKey) {
-        ctx.ui.notify("Cursor SDK: set CURSOR_API_KEY or pass --api-key", "warning");
-        return;
-      }
-      try {
-        const sdk = await loadCursorSdk();
-        const listed = await sdk.Cursor.models.list({ apiKey });
-        const models = mapCursorModels(listed);
-        ctx.modelRegistry.registerProvider("cursor-sdk", cursorSdkProvider(models));
-        if (!ctx.hasUI) return;
-        ctx.ui.notify(`Cursor SDK catalog updated with ${models.length} models.`, "info");
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        ctx.ui.notify(`Cursor SDK catalog update failed: ${message}`, "error");
-      }
+      const models = await fetchCursorModels();
+      ctx.modelRegistry.registerProvider("cursor-sdk", cursorCliProvider(models));
+      if (!ctx.hasUI) return;
+      ctx.ui.notify(`Cursor CLI catalog updated with ${models.length} models.`, "info");
     },
   });
 }

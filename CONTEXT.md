@@ -1,33 +1,37 @@
-# Cursor SDK provider
+# Cursor CLI provider
 
-Vocabulary for the omp extension that exposes Cursor models through the Cursor SDK.
+Vocabulary for the omp extension that exposes Cursor models through the Cursor Agent CLI.
 
 ## Language
 
 **cursor-sdk**:
-The omp provider id for this extension. Distinct from the built-in `cursor` provider.
-_Avoid_: cursor (the built-in), cursor-agent
+The omp provider id for this extension. Kept from the SDK era so existing sessions and configs keep resolving. Distinct from the built-in `cursor` provider.
+_Avoid_: cursor (the built-in), cursor-acp
 
-**Cursor SDK**:
-Cursor's local agent runtime (`@cursor/sdk`) used for inference. Not the built-in HTTP/2 Cursor Agent protocol.
-_Avoid_: cursor-agent, api2.cursor.sh
+**Cursor Agent CLI**:
+The `cursor-agent` binary that runs inference. Invoked once per turn with `--print --output-format stream-json`. Not the in-process `@cursor/sdk` runtime, which this provider no longer uses.
+_Avoid_: Cursor SDK, cursor-agent protocol, api2.cursor.sh
 
-**bootstrap catalog**:
-The baked-in model list registered at startup. Not fetched from Cursor unless the user runs `/update-catalog`.
+**turn run**:
+One CLI process serving one omp turn. It ends when the model finishes, when a tool call is intercepted, or when the host aborts. Nothing survives between runs.
+_Avoid_: live-run, session, resume
+
+**transcript prompt**:
+The single text prompt each run receives: system prompt, every message, the tool calls the model made, and the results the host produced.
+_Avoid_: history replay, context window dump
+
+**interception**:
+Turning a CLI tool announcement into an omp tool call: the run is killed, the mapped call is emitted, and the turn ends with `toolUse`. This is what keeps execution, approval and the session record on the host.
+_Avoid_: proxying, tool bridge, MCP bridge
+
+**CLI-owned tool**:
+A tool the CLI announces that has no omp counterpart (todo, web search). It runs inside Cursor and is narrated in the assistant text.
+_Avoid_: native tool leak, unsupported tool
+
+**baked catalog**:
+The model list generated from `cursor-agent models` into `catalog.generated.ts`, registered at startup. `/update-catalog` refreshes it live.
 _Avoid_: fallback models, dummy catalog
 
-**live catalog**:
-The model list returned by Cursor for the current API key. Loaded only by `/update-catalog`.
-_Avoid_: dynamic models (omp hook name)
-
 **context window**:
-The per-model token limit shown on `/model`. Taken from the catalog `context` parameter when present, otherwise from the observed SDK checkpoint table. `maxTokens` mirrors it.
-_Avoid_: a single 128k/16k fallback for every model
-
-**omp tool loop**:
-The shared omp contract: the provider emits tool calls, omp executes them, the next turn carries tool results. Same loop as other omp providers.
-_Avoid_: Cursor-native tools, Cursor built-in tools, MCP bridge
-
-**live-run**:
-One in-flight Cursor SDK send that stays open across omp tool-loop turns until the assistant finishes or the session is closed.
-_Avoid_: session pooling, MCP bridge
+Taken from the family prefix table in `catalog.generated.ts`; unknown families fall back to 200k. `maxTokens` mirrors it.
+_Avoid_: per-variant window table
