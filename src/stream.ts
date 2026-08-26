@@ -76,7 +76,13 @@ function appendThinking(partial: AssistantMessage, text: string): number {
   return partial.content.length - 1;
 }
 
-const DEFAULT_STALL_TIMEOUT_MS = 120_000;
+// Measured live (trading-bot + qr-service incidents, grok xhigh): long
+// server-side planning streams zero frames, Cursor's gateway cuts the idle
+// request at ~120s, and @cursor/sdk's immediate retry delivers the finished
+// turn within ~1s. A 120s deadline killed the run one beat before that
+// self-heal. 300s clears the cut+retry cycle while still bounding a truly
+// dead transport; ESC abort remains the instant escape hatch.
+const DEFAULT_STALL_TIMEOUT_MS = 300_000;
 
 let stallTimeoutMs = DEFAULT_STALL_TIMEOUT_MS;
 
@@ -200,7 +206,13 @@ async function freshTurn(
     const next = live.waitSegment();
     // The watchdog or the abort signal may terminate the segment while the
     // send handshake is still in flight; race them so we always settle.
-    const sendPromise = agent.send(buildCursorPrompt(context), { model: { id: selectionId } });
+    // onStep is a public SDK hook that fires at turn-phase boundaries even
+    // when the transport streams no frames (e.g. queued or cut-and-retried
+    // requests); each step proves the run is alive and resets the deadline.
+    const sendPromise = agent.send(buildCursorPrompt(context), {
+      model: { id: selectionId },
+      onStep: () => live.touch(),
+    });
     const interrupted = await Promise.race([sendPromise.then(() => null as LiveRunReason | null), next]);
     if (interrupted !== null) {
       void sendPromise

@@ -573,7 +573,7 @@ function appendThinking(partial, text) {
   partial.content.push({ type: "thinking", thinking: text });
   return partial.content.length - 1;
 }
-var DEFAULT_STALL_TIMEOUT_MS = 12e4;
+var DEFAULT_STALL_TIMEOUT_MS = 3e5;
 var stallTimeoutMs = DEFAULT_STALL_TIMEOUT_MS;
 function armStallWatchdog(live, phase) {
   let lastActivity = Date.now();
@@ -661,7 +661,10 @@ async function freshTurn(model, context, stream, partial, options) {
     live.agent = agent;
     if (live.isDead) throw new Error(live.failureMessage ?? "aborted");
     const next = live.waitSegment();
-    const sendPromise = agent.send(buildCursorPrompt(context), { model: { id: selectionId } });
+    const sendPromise = agent.send(buildCursorPrompt(context), {
+      model: { id: selectionId },
+      onStep: () => live.touch()
+    });
     const interrupted = await Promise.race([sendPromise.then(() => null), next]);
     if (interrupted !== null) {
       void sendPromise.then((run2) => {
