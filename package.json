@@ -1,6 +1,6 @@
 {
   "name": "@witooh/omp-provider-cursor",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "omp extension that registers Cursor models via @cursor/sdk as provider cursor-sdk",
   "type": "module",
   "license": "MIT",
