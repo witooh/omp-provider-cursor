@@ -95,6 +95,10 @@ function armStallWatchdog(live: CursorSdkLiveRun, phase: string): StallWatchdog 
   const touch = () => {
     lastActivity = Date.now();
   };
+  // Events keep flowing through consumers started by earlier turns, so the
+  // liveness hook on the run itself — not this turn's loop — must feed the
+  // deadline while a resumed segment is in flight.
+  live.onActivity = touch;
   const timer = setInterval(
     () => {
       const idleMs = Date.now() - lastActivity;
@@ -108,6 +112,7 @@ function armStallWatchdog(live: CursorSdkLiveRun, phase: string): StallWatchdog 
     touch,
     disarm: () => {
       clearInterval(timer);
+      if (live.onActivity === touch) live.onActivity = undefined;
     },
   };
 }
@@ -210,7 +215,7 @@ async function freshTurn(
     const run = await sendPromise;
     watchdog.touch();
     live.run = run;
-    void consumeRun(live, stream, partial, run, watchdog.touch);
+    void consumeRun(live, stream, partial, run);
     await settleSegment(model, stream, partial, live, options, await next);
   } catch (error) {
     await settleSegment(model, stream, partial, live, options, classifyError(options, error));
@@ -247,11 +252,10 @@ async function consumeRun(
   stream: AssistantMessageEventStream,
   fallback: AssistantMessage,
   run: { stream(): AsyncGenerator<SDKMessage, void> },
-  touch: () => void,
 ): Promise<void> {
   try {
     for await (const event of run.stream()) {
-      touch();
+      live.touch();
       const target = live.partial ?? fallback;
       const out = live.stream ?? stream;
       const terminal = applySdkEvent(out, target, live, event);

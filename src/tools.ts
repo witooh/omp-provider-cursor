@@ -30,6 +30,12 @@ export class CursorSdkLiveRun implements ProviderSessionState {
   finished = false;
   /** Tool calls emitted after their segment's stream ended; replayed on reattach. */
   deferredCalls: ToolCall[] = [];
+  /** Liveness hook armed by the stream layer's stall watchdog for the active segment. */
+  onActivity: (() => void) | undefined;
+  /** Report liveness so a segment with flowing SDK events outlives the silence deadline. */
+  touch(): void {
+    this.onActivity?.();
+  }
   #segment: ((reason: LiveRunReason) => void) | undefined;
   #streamOpen = false;
   #closed = false;
@@ -50,6 +56,7 @@ export class CursorSdkLiveRun implements ProviderSessionState {
     this.stream = stream;
     this.partial = partial;
     this.#streamOpen = true;
+    this.touch();
     const deferred = this.deferredCalls;
     this.deferredCalls = [];
     for (const toolCall of deferred) this.emitToolCall(toolCall);
@@ -176,6 +183,7 @@ export function buildCustomTools(
           arguments: args as Record<string, unknown>,
         };
         live.pending.set(id, { resolve, reject });
+        live.touch();
         live.emitToolCall(toolCall);
         live.endSegment("toolUse");
         return promise;

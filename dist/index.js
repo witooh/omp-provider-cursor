@@ -395,6 +395,12 @@ var CursorSdkLiveRun = class {
   finished = false;
   /** Tool calls emitted after their segment's stream ended; replayed on reattach. */
   deferredCalls = [];
+  /** Liveness hook armed by the stream layer's stall watchdog for the active segment. */
+  onActivity;
+  /** Report liveness so a segment with flowing SDK events outlives the silence deadline. */
+  touch() {
+    this.onActivity?.();
+  }
   #segment;
   #streamOpen = false;
   #closed = false;
@@ -412,6 +418,7 @@ var CursorSdkLiveRun = class {
     this.stream = stream;
     this.partial = partial;
     this.#streamOpen = true;
+    this.touch();
     const deferred = this.deferredCalls;
     this.deferredCalls = [];
     for (const toolCall of deferred) this.emitToolCall(toolCall);
@@ -513,6 +520,7 @@ function buildCustomTools(tools, live) {
           arguments: args
         };
         live.pending.set(id, { resolve, reject });
+        live.touch();
         live.emitToolCall(toolCall);
         live.endSegment("toolUse");
         return promise;
@@ -572,6 +580,7 @@ function armStallWatchdog(live, phase) {
   const touch = () => {
     lastActivity = Date.now();
   };
+  live.onActivity = touch;
   const timer = setInterval(
     () => {
       const idleMs = Date.now() - lastActivity;
@@ -585,6 +594,7 @@ function armStallWatchdog(live, phase) {
     touch,
     disarm: () => {
       clearInterval(timer);
+      if (live.onActivity === touch) live.onActivity = void 0;
     }
   };
 }
@@ -665,7 +675,7 @@ async function freshTurn(model, context, stream, partial, options) {
     const run = await sendPromise;
     watchdog.touch();
     live.run = run;
-    void consumeRun(live, stream, partial, run, watchdog.touch);
+    void consumeRun(live, stream, partial, run);
     await settleSegment(model, stream, partial, live, options, await next);
   } catch (error) {
     await settleSegment(model, stream, partial, live, options, classifyError(options, error));
@@ -693,10 +703,10 @@ function streamCursor(model, context, options) {
   });
   return stream;
 }
-async function consumeRun(live, stream, fallback, run, touch) {
+async function consumeRun(live, stream, fallback, run) {
   try {
     for await (const event of run.stream()) {
-      touch();
+      live.touch();
       const target = live.partial ?? fallback;
       const out = live.stream ?? stream;
       const terminal = applySdkEvent(out, target, live, event);
