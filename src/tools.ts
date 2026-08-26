@@ -26,7 +26,12 @@ export class CursorSdkLiveRun implements ProviderSessionState {
   stream: AssistantMessageEventStream | undefined;
   partial: AssistantMessage | undefined;
   failureMessage: string | undefined;
+  /** True once the SDK run generator can no longer produce events. */
+  finished = false;
+  /** Tool calls emitted after their segment's stream ended; replayed on reattach. */
+  deferredCalls: ToolCall[] = [];
   #segment: ((reason: LiveRunReason) => void) | undefined;
+  #streamOpen = false;
   #closed = false;
 
   waitSegment(): Promise<LiveRunReason> {
@@ -44,11 +49,55 @@ export class CursorSdkLiveRun implements ProviderSessionState {
   attach(stream: AssistantMessageEventStream, partial: AssistantMessage): void {
     this.stream = stream;
     this.partial = partial;
+    this.#streamOpen = true;
+    const deferred = this.deferredCalls;
+    this.deferredCalls = [];
+    for (const toolCall of deferred) this.emitToolCall(toolCall);
+  }
+
+  /** True once closed or failed; a dead run cannot serve further turns. */
+  get isDead(): boolean {
+    return this.#closed || this.failureMessage !== undefined;
+  }
+
+  /** Called by the stream layer whenever the attached segment stream terminates. */
+  markStreamEnded(): void {
+    this.#streamOpen = false;
+  }
+
+  /**
+   * Emit a tool call to the consumer. When the segment's stream has already
+   * ended, the call is held and replayed onto the next attached stream so the
+   * host still sees it and can execute it.
+   */
+  emitToolCall(toolCall: ToolCall): void {
+    if (this.#closed) return;
+    const stream = this.stream;
+    const partial = this.partial;
+    if (!this.#streamOpen || !stream || !partial) {
+      this.deferredCalls.push(toolCall);
+      return;
+    }
+    partial.content.push(toolCall);
+    const index = partial.content.length - 1;
+    const delta = JSON.stringify(toolCall.arguments);
+    stream.push({ type: "toolcall_start", contentIndex: index, partial });
+    stream.push({ type: "toolcall_delta", contentIndex: index, delta, partial });
+    stream.push({ type: "toolcall_end", contentIndex: index, toolCall, partial });
+  }
+
+  /** Stall detection: fail the waiting segment so callers get an error, not silence. */
+  fail(message: string): void {
+    if (this.#closed) return;
+    this.failureMessage = message;
+    void this.run?.cancel();
+    this.endSegment("error");
   }
 
   close(): void {
     if (this.#closed) return;
     this.#closed = true;
+    this.#streamOpen = false;
     for (const waiting of this.pending.values()) waiting.reject(new Error("closed"));
     this.pending.clear();
     void this.run?.cancel();
@@ -107,18 +156,6 @@ export function resumeLiveRun(context: Context, live: CursorSdkLiveRun): void {
   }
 }
 
-function emitToolCall(live: CursorSdkLiveRun, toolCall: ToolCall): void {
-  const stream = live.stream;
-  const partial = live.partial;
-  if (!stream || !partial) return;
-  partial.content.push(toolCall);
-  const index = partial.content.length - 1;
-  const delta = JSON.stringify(toolCall.arguments);
-  stream.push({ type: "toolcall_start", contentIndex: index, partial });
-  stream.push({ type: "toolcall_delta", contentIndex: index, delta, partial });
-  stream.push({ type: "toolcall_end", contentIndex: index, toolCall, partial });
-}
-
 export function buildCustomTools(
   tools: readonly Tool[] | undefined,
   live: CursorSdkLiveRun,
@@ -139,7 +176,7 @@ export function buildCustomTools(
           arguments: args as Record<string, unknown>,
         };
         live.pending.set(id, { resolve, reject });
-        emitToolCall(live, toolCall);
+        live.emitToolCall(toolCall);
         live.endSegment("toolUse");
         return promise;
       },

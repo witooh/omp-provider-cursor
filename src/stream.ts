@@ -76,36 +76,110 @@ function appendThinking(partial: AssistantMessage, text: string): number {
   return partial.content.length - 1;
 }
 
-export function streamCursor(model: Model<Api>, context: Context, options?: SimpleStreamOptions) {
-  const stream = createAssistantMessageEventStream();
-  const partial = makeMessage(model, "stop");
+const DEFAULT_STALL_TIMEOUT_MS = 120_000;
 
-  (async () => {
-    stream.push({ type: "start", partial });
+let stallTimeoutMs = DEFAULT_STALL_TIMEOUT_MS;
+
+/** Test seam: shrink the provider-silence deadline before arming a turn. */
+export function setStallTimeoutMs(timeoutMs: number): void {
+  stallTimeoutMs = timeoutMs;
+}
+
+interface StallWatchdog {
+  touch: () => void;
+  disarm: () => void;
+}
+
+function armStallWatchdog(live: CursorSdkLiveRun, phase: string): StallWatchdog {
+  let lastActivity = Date.now();
+  const touch = () => {
+    lastActivity = Date.now();
+  };
+  const timer = setInterval(
+    () => {
+      const idleMs = Date.now() - lastActivity;
+      if (idleMs < stallTimeoutMs) return;
+      clearInterval(timer);
+      live.fail(`Cursor SDK stall: no events for ${Math.round(idleMs / 1000)}s while ${phase}`);
+    },
+    Math.max(15, Math.min(1000, Math.floor(stallTimeoutMs / 4))),
+  );
+  return {
+    touch,
+    disarm: () => {
+      clearInterval(timer);
+    },
+  };
+}
+
+function bindAbortSignal(live: CursorSdkLiveRun, options: SimpleStreamOptions | undefined): (() => void) | undefined {
+  const signal = options?.signal;
+  if (!signal) return undefined;
+  const onAbort = () => {
+    live.close();
+  };
+  signal.addEventListener("abort", onAbort, { once: true });
+  return () => {
+    signal.removeEventListener("abort", onAbort);
+  };
+}
+
+async function resumeTurn(
+  model: Model<Api>,
+  context: Context,
+  stream: AssistantMessageEventStream,
+  partial: AssistantMessage,
+  existing: CursorSdkLiveRun,
+  options: SimpleStreamOptions | undefined,
+): Promise<void> {
+  if (existing.isDead || existing.finished) {
+    deleteLiveRun(options ?? {});
+    existing.close();
+    const reason = existing.failureMessage ?? "Cursor run ended before its tool results arrived";
+    finish(stream, makeMessage(model, "error", reason), "error");
+    return;
+  }
+  existing.attach(stream, partial);
+  const watchdog = armStallWatchdog(existing, "resuming after tool results");
+  const removeAbort = bindAbortSignal(existing, options);
+  try {
+    const next = existing.waitSegment();
+    resumeLiveRun(context, existing);
+    await settleSegment(model, stream, partial, existing, options, await next);
+  } catch (error) {
+    await settleSegment(model, stream, partial, existing, options, classifyError(options, error));
+  } finally {
+    watchdog.disarm();
+    removeAbort?.();
+  }
+}
+
+async function freshTurn(
+  model: Model<Api>,
+  context: Context,
+  stream: AssistantMessageEventStream,
+  partial: AssistantMessage,
+  options: SimpleStreamOptions | undefined,
+): Promise<void> {
+  const live = new CursorSdkLiveRun();
+  live.attach(stream, partial);
+  if (options?.providerSessionState) putLiveRun(options, live);
+
+  const watchdog = armStallWatchdog(live, "starting the run");
+  const removeAbort = bindAbortSignal(live, options);
+  try {
     const rawKey = await resolveApiKeyOnce(options?.apiKey, options?.signal);
+    watchdog.touch();
     const apiKey = resolveCursorApiKey(rawKey);
     if (!apiKey) {
+      deleteLiveRun(options ?? {});
       finish(stream, makeMessage(model, "error", MISSING_KEY), "error");
       return;
     }
-    const existing = getLiveRun(options ?? {});
-
-    if (existing && shouldResumeLiveRun(context, existing)) {
-      existing.attach(stream, partial);
-      const next = existing.waitSegment();
-      resumeLiveRun(context, existing);
-      await settleSegment(model, stream, partial, existing, options, await next);
-      return;
-    }
-
-    existing?.close();
-    deleteLiveRun(options ?? {});
-
-    const live = new CursorSdkLiveRun();
-    live.attach(stream, partial);
-    if (options?.providerSessionState) putLiveRun(options, live);
+    if (options?.signal?.aborted) throw new Error("aborted");
 
     const sdk = await loadCursorSdk();
+    watchdog.touch();
     const cwd = options?.cwd ?? process.cwd();
     const selectionId = cursorSelectionId(model.id);
     const agent = await sdk.Agent.create({
@@ -114,26 +188,52 @@ export function streamCursor(model: Model<Api>, context: Context, options?: Simp
       tools: ["mcp"],
       local: { cwd, customTools: buildCustomTools(context.tools, live) },
     });
+    watchdog.touch();
     live.agent = agent;
+    if (live.isDead) throw new Error(live.failureMessage ?? "aborted");
 
-    const abort = options?.signal;
-    const onAbort = () => {
-      live.close();
-    };
-    abort?.addEventListener("abort", onAbort, { once: true });
-
-    try {
-      if (abort?.aborted) throw new Error("aborted");
-      const next = live.waitSegment();
-      const run = await agent.send(buildCursorPrompt(context), { model: { id: selectionId } });
-      live.run = run;
-      void consumeRun(live, stream, partial, run);
-      await settleSegment(model, stream, partial, live, options, await next);
-    } catch (error) {
-      await settleSegment(model, stream, partial, live, options, classifyError(options, error));
-    } finally {
-      abort?.removeEventListener("abort", onAbort);
+    const next = live.waitSegment();
+    // The watchdog or the abort signal may terminate the segment while the
+    // send handshake is still in flight; race them so we always settle.
+    const sendPromise = agent.send(buildCursorPrompt(context), { model: { id: selectionId } });
+    const interrupted = await Promise.race([sendPromise.then(() => null as LiveRunReason | null), next]);
+    if (interrupted !== null) {
+      void sendPromise
+        .then((run) => {
+          live.run = run;
+          return run.cancel();
+        })
+        .catch(() => {});
+      await settleSegment(model, stream, partial, live, options, interrupted);
+      return;
     }
+    const run = await sendPromise;
+    watchdog.touch();
+    live.run = run;
+    void consumeRun(live, stream, partial, run, watchdog.touch);
+    await settleSegment(model, stream, partial, live, options, await next);
+  } catch (error) {
+    await settleSegment(model, stream, partial, live, options, classifyError(options, error));
+  } finally {
+    watchdog.disarm();
+    removeAbort?.();
+  }
+}
+
+export function streamCursor(model: Model<Api>, context: Context, options?: SimpleStreamOptions) {
+  const stream = createAssistantMessageEventStream();
+  const partial = makeMessage(model, "stop");
+
+  void (async () => {
+    stream.push({ type: "start", partial });
+    const existing = getLiveRun(options ?? {});
+    if (existing && shouldResumeLiveRun(context, existing)) {
+      await resumeTurn(model, context, stream, partial, existing, options);
+      return;
+    }
+    existing?.close();
+    deleteLiveRun(options ?? {});
+    await freshTurn(model, context, stream, partial, options);
   })().catch((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     finish(stream, makeMessage(model, "error", message), "error");
@@ -147,19 +247,24 @@ async function consumeRun(
   stream: AssistantMessageEventStream,
   fallback: AssistantMessage,
   run: { stream(): AsyncGenerator<SDKMessage, void> },
+  touch: () => void,
 ): Promise<void> {
   try {
     for await (const event of run.stream()) {
+      touch();
       const target = live.partial ?? fallback;
       const out = live.stream ?? stream;
       const terminal = applySdkEvent(out, target, live, event);
       if (terminal) {
+        live.finished = true;
         live.endSegment(terminal);
         return;
       }
     }
+    live.finished = true;
     live.endSegment("stop");
   } catch (error) {
+    live.finished = true;
     live.endSegment(error instanceof Error && error.message === "aborted" ? "aborted" : "error");
   }
 }
@@ -181,6 +286,7 @@ async function settleSegment(
     partial.stopReason = "toolUse";
     stream.push({ type: "done", reason: "toolUse", message: partial });
     stream.end(partial);
+    live.markStreamEnded();
     return;
   }
 
@@ -199,6 +305,7 @@ async function settleSegment(
   partial.stopReason = "stop";
   stream.push({ type: "done", reason: "stop", message: partial });
   stream.end(partial);
+  live.markStreamEnded();
 }
 
 function classifyError(options: SimpleStreamOptions | undefined, error: unknown): LiveRunReason {
